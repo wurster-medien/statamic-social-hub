@@ -19,7 +19,7 @@ class FeedRepositoryTest extends TestCase
     {
         Http::fake([
             'hub.test/api/v1/feeds/rath_bau*' => Http::response($this->hubFeed([$this->hubMedia('1'), $this->hubMedia('2')])),
-            'hub.test/storage/*' => Http::response('jpeg-bytes', 200, ['Content-Type' => 'image/jpeg']),
+            'hub.test/storage/*' => fn () => Http::response('jpeg-bytes', 200, ['Content-Type' => 'image/jpeg']),
         ]);
 
         $repository = app(FeedRepository::class);
@@ -113,5 +113,57 @@ class FeedRepositoryTest extends TestCase
         Cache::forget($repository->cacheKey('rath_bau'));
 
         $this->assertSame(['2', '1'], array_column($repository->items('rath_bau'), 'id'));
+    }
+
+    #[Test]
+    public function a_page_request_mirrors_images_and_thumbnails_but_not_videos(): void
+    {
+        $this->simulateWebRequest();
+
+        Http::fake([
+            'hub.test/api/v1/feeds/rath_bau*' => Http::response($this->hubFeed([
+                $this->hubMedia('1', [
+                    'media_type' => 'VIDEO',
+                    'media_url' => 'https://hub.test/storage/social/1.mp4',
+                    'thumbnail_url' => 'https://hub.test/storage/social/1_thumb.jpg',
+                ]),
+                $this->hubMedia('2'),
+            ])),
+            'hub.test/storage/*' => fn () => Http::response('bytes'),
+        ]);
+
+        $items = app(FeedRepository::class)->items('rath_bau');
+
+        $this->assertSame('https://hub.test/storage/social/1.mp4', $items[0]['media_url']);
+        $this->assertSame('/social-hub/rath_bau/1_thumb.jpg', $items[0]['thumbnail_url']);
+        $this->assertSame('/social-hub/rath_bau/2.jpg', $items[1]['media_url']);
+        Http::assertNotSent(fn ($request) => str_ends_with($request->url(), '.mp4'));
+    }
+
+    #[Test]
+    public function the_sync_still_mirrors_videos(): void
+    {
+        Http::fake([
+            'hub.test/api/v1/feeds/rath_bau*' => Http::response($this->hubFeed([
+                $this->hubMedia('1', ['media_type' => 'VIDEO', 'media_url' => 'https://hub.test/storage/social/1.mp4']),
+            ])),
+            'hub.test/storage/*' => fn () => Http::response('bytes'),
+        ]);
+
+        $feed = app(FeedRepository::class)->refresh('rath_bau');
+
+        $this->assertSame('/social-hub/rath_bau/1.mp4', $feed['data'][0]['media_url']);
+    }
+
+    /**
+     * PHPUnit läuft auf der Konsole; für den Test so tun, als wäre es ein
+     * Seitenaufruf.
+     */
+    protected function simulateWebRequest(): void
+    {
+        $property = new \ReflectionProperty($this->app, 'isRunningInConsole');
+        $property->setValue($this->app, false);
+
+        $this->assertFalse($this->app->runningInConsole());
     }
 }

@@ -24,7 +24,7 @@ class SyncAndControlPanelTest extends TestCase
                 ['handle' => 'rath_bau', 'platform' => 'instagram', 'username' => 'rath_bau', 'name' => 'Rath Bau', 'status' => 'active', 'last_synced_at' => '2026-09-24T08:00:00+00:00', 'can_publish' => true],
             ]]),
             'hub.test/api/v1/feeds/rath_bau*' => Http::response($this->hubFeed([$this->hubMedia('1'), $this->hubMedia('2')])),
-            'hub.test/storage/*' => Http::response('bytes'),
+            'hub.test/storage/*' => fn () => Http::response('bytes'),
         ]);
     }
 

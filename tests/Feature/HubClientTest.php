@@ -10,6 +10,7 @@ use WursterMedien\SocialHub\Hub\HubClient;
 use WursterMedien\SocialHub\Hub\HubConnectionException;
 use WursterMedien\SocialHub\Hub\HubNotConfiguredException;
 use WursterMedien\SocialHub\Hub\HubRequestException;
+use WursterMedien\SocialHub\Hub\HubTimeoutException;
 use WursterMedien\SocialHub\Tests\TestCase;
 
 class HubClientTest extends TestCase
@@ -92,6 +93,68 @@ class HubClientTest extends TestCase
         $this->expectException(HubConnectionException::class);
 
         app(HubClient::class)->ping();
+    }
+
+    #[Test]
+    public function creating_a_post_uses_the_longer_post_timeout(): void
+    {
+        $timeouts = [];
+
+        Http::fake(function (Request $request, array $options) use (&$timeouts) {
+            $timeouts[$request->method()] = $options['timeout'];
+
+            return Http::response(['data' => ['id' => 'uuid-1']], 201);
+        });
+
+        $client = app(HubClient::class);
+        $client->createPost(['title' => 'Test']);
+        $client->ping();
+
+        $this->assertSame(120, $timeouts['POST']);
+        $this->assertSame(5, $timeouts['GET']);
+
+        config(['social-hub.post_timeout' => 300]);
+        $client->createPost(['title' => 'Test']);
+
+        $this->assertSame(300, $timeouts['POST']);
+    }
+
+    #[Test]
+    public function a_post_timeout_is_reported_clearly_and_not_retried(): void
+    {
+        $attempts = 0;
+
+        Http::fake(function () use (&$attempts) {
+            $attempts++;
+
+            throw new ConnectionException('cURL error 28: Operation timed out after 120001 milliseconds with 0 bytes received');
+        });
+
+        try {
+            app(HubClient::class)->createPost(['title' => 'Test']);
+            $this->fail('Exception erwartet');
+        } catch (HubTimeoutException $exception) {
+            $this->assertStringContainsString('antwortet nicht rechtzeitig', $exception->getMessage());
+            $this->assertStringContainsString('evtl. trotzdem angelegt', $exception->getMessage());
+            $this->assertStringContainsString('An Social Hub senden', $exception->getMessage());
+        }
+
+        // Kein automatischer zweiter Versuch.
+        $this->assertSame(1, $attempts);
+    }
+
+    #[Test]
+    public function a_failed_connection_is_not_reported_as_timeout(): void
+    {
+        Http::fake(fn () => throw new ConnectionException('cURL error 7: Failed to connect to hub.test port 443'));
+
+        try {
+            app(HubClient::class)->createPost(['title' => 'Test']);
+            $this->fail('Exception erwartet');
+        } catch (HubConnectionException $exception) {
+            $this->assertNotInstanceOf(HubTimeoutException::class, $exception);
+            $this->assertStringContainsString('nicht erreichbar', $exception->getMessage());
+        }
     }
 
     #[Test]

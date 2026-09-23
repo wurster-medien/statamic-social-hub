@@ -14,6 +14,9 @@ use WursterMedien\SocialHub\Webhooks\SignatureVerifier;
  *
  * Nimmt Statusmeldungen des Hubs entgegen (post.updated, post.published,
  * post.failed) und schreibt Status und Permalinks in den Eintrag.
+ *
+ * Ungültige oder abgelaufene Signatur: 401. Bereits angenommene Signatur
+ * (Replay innerhalb der Toleranz): 200 mit duplicate=true, ohne Wirkung.
  */
 class WebhookController extends Controller
 {
@@ -22,11 +25,20 @@ class WebhookController extends Controller
     public function __invoke(Request $request, SignatureVerifier $verifier, PostStatusWriter $writer): JsonResponse
     {
         $payload = $request->getContent();
+        $signature = $verifier->validSignature($payload, $request->header(SignatureVerifier::HEADER), config('social-hub.webhook_secret'));
 
-        if (! $verifier->verify($payload, $request->header(SignatureVerifier::HEADER), config('social-hub.webhook_secret'))) {
+        if ($signature === null) {
             Log::warning('[Social Hub] Webhook mit ungültiger oder abgelaufener Signatur abgelehnt.');
 
             return response()->json(['message' => 'Ungültige Signatur.'], 401);
+        }
+
+        // Wiederholung einer bereits angenommenen Zustellung: 200 ohne Wirkung,
+        // damit der Absender nicht erneut zustellt.
+        if (! $verifier->claim($signature)) {
+            Log::info('[Social Hub] Wiederholter Webhook ignoriert.');
+
+            return response()->json(['ok' => true, 'duplicate' => true]);
         }
 
         $data = json_decode($payload, true);

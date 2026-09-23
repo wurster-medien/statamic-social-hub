@@ -2,6 +2,7 @@
 
 namespace WursterMedien\SocialHub\Tests\Feature;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -151,6 +152,31 @@ class SendToSocialHubTest extends TestCase
         $this->expectExceptionMessage('bereits freigegeben oder veröffentlicht');
 
         (new SendToSocialHub)->run(collect([$entry]), []);
+    }
+
+    #[Test]
+    public function a_hub_timeout_explains_that_the_post_may_exist(): void
+    {
+        $attempts = 0;
+
+        Http::fake(function () use (&$attempts) {
+            $attempts++;
+
+            throw new ConnectionException('cURL error 28: Operation timed out after 120001 milliseconds with 0 bytes received');
+        });
+
+        $entry = $this->entry(['social_hub_targets' => [['enabled' => true, 'account' => 'rath_bau']]]);
+
+        try {
+            (new SendToSocialHub)->run(collect([$entry]), []);
+            $this->fail('Exception erwartet');
+        } catch (\Exception $exception) {
+            $this->assertStringStartsWith('„Richtfest“: Der Hub antwortet nicht rechtzeitig', $exception->getMessage());
+            $this->assertStringContainsString('evtl. trotzdem angelegt', $exception->getMessage());
+        }
+
+        $this->assertSame(1, $attempts);
+        $this->assertNull(Entry::find('entry-1')->get('social_hub_sent_at'));
     }
 
     #[Test]

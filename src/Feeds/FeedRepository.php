@@ -68,7 +68,7 @@ class FeedRepository
         try {
             $deadline = microtime(true) + (float) config('social-hub.mirror_budget_seconds', 8);
 
-            return $this->refresh($handle, $deadline);
+            return $this->refresh($handle, $deadline, $this->mirrorsVideosOnDemand());
         } catch (Throwable $exception) {
             return $this->fallback($handle, $exception);
         } finally {
@@ -109,7 +109,7 @@ class FeedRepository
         try {
             $item = $this->client->media($handle, $id);
             $deadline = microtime(true) + (float) config('social-hub.mirror_budget_seconds', 8);
-            $item = is_array($item) ? $this->mirror->mirrorItem($handle, $item, $deadline) : null;
+            $item = is_array($item) ? $this->mirror->mirrorItem($handle, $item, $deadline, $this->mirrorsVideosOnDemand()) : null;
             Cache::put($key, ['item' => $item], now()->addMinutes((int) config('social-hub.cache_minutes', 30)));
 
             return $item;
@@ -125,11 +125,12 @@ class FeedRepository
      * Holt den Feed neu vom Hub, spiegelt die Medien und speichert ihn.
      *
      * @param  float|null  $deadline  Zeitbudget für Downloads (null = unbegrenzt)
+     * @param  bool  $includeVideos  false = Videos nicht spiegeln, die Hub-URL bleibt
      * @return array{handle: string, data: list<array<string, mixed>>, meta: array<string, mixed>, fetched_at: string|null, stale: bool}
      *
      * @throws HubException
      */
-    public function refresh(string $handle, ?float $deadline = null): array
+    public function refresh(string $handle, ?float $deadline = null, bool $includeVideos = true): array
     {
         $limit = max((int) config('social-hub.fetch_limit', 50), (int) config('social-hub.default_limit', 12));
         $response = $this->client->feed($handle, $limit);
@@ -138,7 +139,7 @@ class FeedRepository
 
         $feed = [
             'handle' => $handle,
-            'data' => $this->mirror->mirrorFeed($handle, $items, $deadline),
+            'data' => $this->mirror->mirrorFeed($handle, $items, $deadline, $includeVideos),
             'meta' => $response['meta'],
             'fetched_at' => Carbon::now()->toIso8601String(),
             'stale' => false,
@@ -229,6 +230,16 @@ class FeedRepository
     protected function emptyFeed(string $handle): array
     {
         return ['handle' => $handle, 'data' => [], 'meta' => [], 'fetched_at' => null, 'stale' => true];
+    }
+
+    /**
+     * Beim Seitenaufruf werden keine Videos gespiegelt (zu groß für das
+     * Zeitbudget), nur Bilder und Vorschaubilder. Videos lädt der Sync auf der
+     * Konsole bzw. über den Knopf im Control Panel; bis dahin bleibt die Hub-URL.
+     */
+    protected function mirrorsVideosOnDemand(): bool
+    {
+        return app()->runningInConsole();
     }
 
     protected function describe(Throwable $exception): string

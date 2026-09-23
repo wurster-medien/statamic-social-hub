@@ -60,12 +60,28 @@ class HubClient
     /**
      * Legt einen Post an bzw. aktualisiert ihn (idempotent über source_reference).
      *
+     * Der Hub lädt dabei die Medien synchron, deshalb gilt hier das eigene
+     * Timeout post_timeout (Standard 120 s) statt des kurzen Feed-Timeouts.
+     * Es gibt bewusst keinen automatischen zweiten Versuch: Nach einem Timeout
+     * kann der Post im Hub bereits angelegt sein.
+     *
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
+     *
+     * @throws HubTimeoutException wenn der Hub nicht rechtzeitig antwortet
      */
     public function createPost(array $payload): array
     {
-        return $this->send('POST', 'api/v1/posts', $payload)['data'] ?? [];
+        $timeout = max(1, (int) config('social-hub.post_timeout', 120));
+        $this->extendTimeLimit($timeout);
+
+        try {
+            return $this->send('POST', 'api/v1/posts', $payload, $timeout)['data'] ?? [];
+        } catch (HubConnectionException $exception) {
+            throw $exception->isResponseTimeout()
+                ? HubTimeoutException::postMayExist($exception->getPrevious())
+                : $exception;
+        }
     }
 
     /**
@@ -120,12 +136,12 @@ class HubClient
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    protected function send(string $method, string $path, array $data = []): array
+    protected function send(string $method, string $path, array $data = [], ?int $timeout = null): array
     {
         try {
             $response = $method === 'GET'
-                ? $this->request()->get($path, $data)
-                : $this->request()->send($method, $path, ['json' => $data]);
+                ? $this->request($timeout)->get($path, $data)
+                : $this->request($timeout)->send($method, $path, ['json' => $data]);
         } catch (ConnectionException $exception) {
             throw HubConnectionException::for($method, '/'.$path, $exception);
         }
@@ -139,14 +155,17 @@ class HubClient
         return is_array($json) ? $json : [];
     }
 
-    protected function request(): PendingRequest
+    /**
+     * @param  int|null  $timeout  Sekunden, null = social-hub.timeout
+     */
+    protected function request(?int $timeout = null): PendingRequest
     {
         if (! $this->isConfigured()) {
             throw HubNotConfiguredException::missing();
         }
 
         return Http::baseUrl(rtrim((string) config('social-hub.url'), '/'))
-            ->timeout((int) config('social-hub.timeout', 5))
+            ->timeout($timeout ?? (int) config('social-hub.timeout', 5))
             ->connectTimeout(min(3, (int) config('social-hub.timeout', 5)))
             ->acceptJson()
             ->withToken((string) config('social-hub.key'))
@@ -154,6 +173,19 @@ class HubClient
                 'X-Social-Hub-Addon' => $this->addonVersion(),
                 'X-Statamic-Version' => $this->statamicVersion(),
             ]);
+    }
+
+    /**
+     * Verhindert, dass PHP (max_execution_time) den Aufruf vor dem HTTP-Timeout
+     * beendet. Ohne Limit (z. B. auf der Konsole) bleibt es dabei.
+     */
+    protected function extendTimeLimit(int $timeout): void
+    {
+        $limit = (int) ini_get('max_execution_time');
+
+        if ($limit > 0 && $limit < $timeout + 30 && function_exists('set_time_limit')) {
+            @set_time_limit($timeout + 30);
+        }
     }
 
     protected function requestException(string $method, string $path, Response $response): HubRequestException

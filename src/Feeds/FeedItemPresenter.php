@@ -9,7 +9,13 @@ use Throwable;
  * Bereitet ein Medium für Templates auf.
  *
  * Die Feldnamen des Hubs (wie bei der Meta-API) bleiben unverändert. Dazu
- * kommen: alt, is_video, date (Carbon), account und extension.
+ * kommen: alt, caption_html, is_video, date (Carbon), account und extension.
+ *
+ * Sicherheit: Antlers escaped Variablen nicht automatisch, die Texte stammen
+ * aber aus fremden Social-Media-Konten. alt und caption_html sind deshalb
+ * bereits HTML-escaped (alt passt gefahrlos in alt="…", caption_html in
+ * Elementinhalte). caption bleibt roh und muss im Template mit
+ * {{ caption | entities }} ausgegeben werden.
  */
 class FeedItemPresenter
 {
@@ -28,7 +34,8 @@ class FeedItemPresenter
             $alt = $parentAlt;
         }
 
-        $item['alt'] = $alt;
+        $item['alt'] = self::escape($alt);
+        $item['caption_html'] = self::captionHtml($caption);
         $item['is_video'] = ($item['media_type'] ?? null) === 'VIDEO' || filled($item['thumbnail_url'] ?? null);
         $item['date'] = $this->date($item['timestamp'] ?? null);
         $item['account'] = $account;
@@ -70,6 +77,29 @@ class FeedItemPresenter
         }
 
         return rtrim($cut, ' ,;:.-').'…';
+    }
+
+    /**
+     * Caption für Elementinhalte: HTML-escaped, Zeilenumbrüche als <br>.
+     */
+    public static function captionHtml(?string $caption): string
+    {
+        if ($caption === null || $caption === '') {
+            return '';
+        }
+
+        return nl2br(self::escape($caption), false);
+    }
+
+    /**
+     * HTML-Entities für & < > " und ', sicher in Attributen und Elementinhalten.
+     *
+     * Vorhandene Entities werden nicht doppelt kodiert, damit auch ein
+     * zusätzliches {{ alt | entities }} im Template nichts verdoppelt.
+     */
+    public static function escape(string $value): string
+    {
+        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8', false);
     }
 
     protected function date(mixed $timestamp): ?Carbon

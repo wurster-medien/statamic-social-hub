@@ -40,7 +40,7 @@ class SocialTagTest extends TestCase
             ])),
             'hub.test/api/v1/feeds/zinser*' => Http::response($this->hubFeed([], 'zinser')),
             'hub.test/api/v1/feeds/unbekannt*' => Http::response(['message' => 'Not found'], 404),
-            'hub.test/storage/*' => Http::response('bytes'),
+            'hub.test/storage/*' => fn () => Http::response('bytes'),
         ]);
     }
 
@@ -83,6 +83,47 @@ class SocialTagTest extends TestCase
             '</social-hub/rath_bau/21.jpg|Neues Projekt 2 fertig!></social-hub/rath_bau/22.jpg|Neues Projekt 2 fertig!>',
             $output,
         );
+    }
+
+    #[Test]
+    public function alt_is_safe_inside_attributes_and_caption_html_is_escaped(): void
+    {
+        Http::fake([
+            'hub.test/api/v1/feeds/xss*' => Http::response($this->hubFeed([
+                $this->hubMedia('9', [
+                    'media_url' => null,
+                    'caption' => "Tom's \"Bau\" onerror=alert(1) <script>alert(2)</script> & Co\nZweite Zeile #tag",
+                ]),
+            ], 'xss')),
+        ]);
+
+        $output = $this->render('{{ social:feed account="xss" }}<img alt="{{ alt }}">|{{ alt | entities }}|{{ caption_html }}|{{ caption | entities }}{{ /social:feed }}');
+
+        [$img, $altEntities, $captionHtml, $captionEntities] = explode('|', $output);
+
+        $alt = 'Tom&#039;s &quot;Bau&quot; onerror=alert(1) &lt;script&gt;alert(2)&lt;/script&gt; &amp; Co Zweite Zeile';
+
+        $this->assertSame('<img alt="'.$alt.'">', $img);
+        // Kein doppeltes Kodieren, wenn ein Template zusätzlich | entities nutzt.
+        $this->assertSame($alt, $altEntities);
+        $this->assertStringNotContainsString('<script>', $captionHtml);
+        $this->assertStringContainsString('&lt;script&gt;', $captionHtml);
+        $this->assertMatchesRegularExpression('/&amp; Co<br>\s+Zweite Zeile #tag/', $captionHtml);
+        $this->assertStringNotContainsString('<script>', $captionEntities);
+    }
+
+    #[Test]
+    public function caption_stays_raw_and_caption_html_is_offered(): void
+    {
+        $item = app(FeedItemPresenter::class)->present($this->hubMedia('5', [
+            'caption' => "A <b>fett</b> & \"zitiert\"\r\nB",
+        ]), 'rath_bau');
+
+        $this->assertSame("A <b>fett</b> & \"zitiert\"\r\nB", $item['caption']);
+        $this->assertSame("A &lt;b&gt;fett&lt;/b&gt; &amp; &quot;zitiert&quot;<br>\r\nB", $item['caption_html']);
+        $this->assertSame('A &lt;b&gt;fett&lt;/b&gt; &amp; &quot;zitiert&quot; B', $item['alt']);
+        $this->assertSame('Tom&#039;s', app(FeedItemPresenter::class)->present($this->hubMedia('7', ['caption' => "Tom's"]), 'rath_bau')['alt']);
+        $this->assertSame('', app(FeedItemPresenter::class)->present($this->hubMedia('6', ['caption' => null]), 'rath_bau')['caption_html']);
     }
 
     #[Test]

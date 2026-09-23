@@ -104,6 +104,51 @@ class WebhookTest extends TestCase
     }
 
     #[Test]
+    public function a_replayed_webhook_is_accepted_without_effect(): void
+    {
+        $body = json_encode($this->payload('post.updated', [
+            'id' => 'post-uuid-1',
+            'status' => 'pending_approval',
+            'source_reference' => 'entry-1',
+            'targets' => [],
+        ]));
+        $signature = SignatureVerifier::header($body, time(), 'test-webhook-secret');
+
+        $this->call('POST', '/!/social-hub/webhook', [], [], [], $this->headers($signature), $body)
+            ->assertOk()->assertJson(['ok' => true, 'matched' => true]);
+
+        // Später geänderter Status darf durch die Wiederholung nicht überschrieben werden.
+        Entry::find('entry-1')->set('social_hub_status', 'published')->save();
+
+        $this->call('POST', '/!/social-hub/webhook', [], [], [], $this->headers($signature), $body)
+            ->assertOk()->assertExactJson(['ok' => true, 'duplicate' => true]);
+
+        // Zusätzliche Signaturen oder Großbuchstaben im Hex-Wert umgehen den Schutz nicht.
+        $this->call('POST', '/!/social-hub/webhook', [], [], [], $this->headers($signature.',v1=deadbeef'), $body)
+            ->assertOk()->assertJson(['duplicate' => true]);
+
+        [$timestamp, $hex] = explode(',v1=', $signature);
+
+        $this->call('POST', '/!/social-hub/webhook', [], [], [], $this->headers($timestamp.',v1='.strtoupper($hex)), $body)
+            ->assertOk()->assertJson(['duplicate' => true]);
+
+        $this->assertSame('published', Entry::find('entry-1')->get('social_hub_status'));
+    }
+
+    #[Test]
+    public function a_new_delivery_of_the_same_event_is_processed(): void
+    {
+        $body = json_encode($this->payload('post.updated', ['id' => 'post-uuid-1', 'status' => 'pending_approval', 'targets' => []]));
+
+        $this->call('POST', '/!/social-hub/webhook', [], [], [], $this->headers(SignatureVerifier::header($body, time() - 10, 'test-webhook-secret')), $body)
+            ->assertOk()->assertJsonMissing(['duplicate' => true]);
+
+        // Der Hub signiert jeden Zustellversuch neu (neuer Zeitstempel).
+        $this->call('POST', '/!/social-hub/webhook', [], [], [], $this->headers(SignatureVerifier::header($body, time(), 'test-webhook-secret')), $body)
+            ->assertOk()->assertJson(['matched' => true])->assertJsonMissing(['duplicate' => true]);
+    }
+
+    #[Test]
     public function a_missing_secret_rejects_everything(): void
     {
         config(['social-hub.webhook_secret' => null]);

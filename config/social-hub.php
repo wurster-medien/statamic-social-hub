@@ -54,9 +54,18 @@ return [
     |--------------------------------------------------------------------------
     | HTTP
     |--------------------------------------------------------------------------
+    |
+    | timeout:      Sekunden für Feeds, Konten und Ping (kurz, damit ein
+    |               langsamer Hub keine Seite aufhält).
+    | post_timeout: Sekunden für "An Social Hub senden" (POST /api/v1/posts).
+    |               Der Hub lädt dabei die Medien synchron. Bei einem Timeout
+    |               wird nicht automatisch erneut gesendet.
+    |
     */
 
     'timeout' => 5,
+
+    'post_timeout' => (int) env('SOCIAL_HUB_POST_TIMEOUT', 120),
 
     /*
     |--------------------------------------------------------------------------
@@ -66,11 +75,13 @@ return [
     | fetch_limit:   so viele Medien werden pro Konto beim Hub abgerufen und
     |                gespiegelt. Der Tag schneidet davon "limit" ab.
     | default_limit: Anzahl Medien, wenn im Tag kein limit angegeben ist.
-    | media_path:    Ordner unter public/, in den die Medien gespiegelt werden.
-    |                Die Templates erhalten Pfade wie /social-hub/{handle}/…,
-    |                die Glide lokal verarbeiten kann.
+    | media_path:    eigener Unterordner unter public/, in den die Medien
+    |                gespiegelt werden. Die Templates erhalten Pfade wie
+    |                /social-hub/{handle}/…, die Glide lokal verarbeiten kann.
+    |                Leer, "/" oder mit ".." = Spiegeln und Aufräumen aus.
     | mirror_budget_seconds: Zeitbudget für das Laden von Medien während eines
-    |                Seitenaufrufs (nur ohne Cron relevant).
+    |                Seitenaufrufs (nur ohne Cron relevant). Dabei werden nur
+    |                Bilder und Vorschaubilder geladen, keine Videos.
     | max_download_mb: größere Dateien (z. B. lange Videos) werden nicht
     |                gespiegelt, sondern weiter vom Hub ausgeliefert.
     |
@@ -119,7 +130,9 @@ return [
     |                   falls der Hub gerade nicht erreichbar ist.
     | teaser_fields:    Felder, aus denen der Standardtext (Titel + Teaser)
     |                   gebaut wird, wenn kein eigener Text eingetragen ist.
-    | webhook_tolerance: maximales Alter eines Webhooks in Sekunden.
+    | webhook_tolerance: maximales Alter eines Webhooks in Sekunden. So lange
+    |                   wird jede angenommene Signatur gemerkt; Wiederholungen
+    |                   werden ohne Wirkung mit 200 beantwortet.
     |
     */
 
