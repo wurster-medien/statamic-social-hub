@@ -1,0 +1,163 @@
+title: 'Social Media (Social Hub)'
+fields:
+  -
+    handle: social_hub_section
+    field:
+      type: section
+      display: 'Social Media'
+      instructions: 'Post für Facebook und Instagram vorbereiten. Gesendet wird **nur** über die Aktion „An Social Hub senden“ (Drei-Punkte-Menü des Eintrags), nie automatisch beim Speichern. Vor dem Senden speichern. Freigabe und Veröffentlichung laufen im Social Hub.'
+  -
+    handle: social_hub_targets
+    field:
+      type: grid
+      display: Kanäle
+      instructions: 'Je Kanal ein Eintrag. Eigener Text ist optional, sonst wird der gemeinsame Text verwendet.'
+      mode: stacked
+      add_row: 'Kanal hinzufügen'
+      reorderable: false
+      fields:
+        -
+          handle: enabled
+          field:
+            type: toggle
+            display: Aktiv
+            default: true
+            width: 25
+        -
+          handle: account
+          field:
+            type: dictionary
+            display: Konto
+            dictionary:
+              type: social_hub_accounts
+            max_items: 1
+            width: 50
+            validate:
+              - required
+        -
+          handle: type
+          field:
+            type: select
+            display: Art
+            instructions: 'Leer = automatisch (Bild, Karussell oder Link, je nach Inhalt).'
+            placeholder: Automatisch
+            clearable: true
+            width: 25
+            options:
+              image: Bild
+              carousel: Karussell
+              link: Link
+              text: 'Nur Text (nur Facebook)'
+              reel: 'Reel / Video'
+        -
+          handle: caption
+          field:
+            type: textarea
+            display: 'Eigener Text für diesen Kanal'
+            placeholder: 'Leer lassen = gemeinsamer Text (bzw. Titel und Teaser)'
+  -
+    handle: social_hub_text
+    field:
+      type: textarea
+      display: 'Text'
+      instructions: 'Gemeinsamer Text für alle Kanäle. Leer = Titel und Teaser des Eintrags.'
+      placeholder: 'Titel und Teaser des Eintrags'
+      character_limit: 2200
+  -
+    handle: social_hub_images
+    field:
+      type: assets
+      display: Bilder
+      instructions: 'Bis zu 10 Bilder. Instagram schneidet auf 4:5 bis 1,91:1 zu, am besten vorher zuschneiden.'
+      max_files: 10
+      mode: grid
+  -
+    handle: social_hub_include_link
+    field:
+      type: toggle
+      display: 'Link zum Eintrag mitsenden'
+      default: true
+      width: 50
+  -
+    handle: social_hub_scheduled_at
+    field:
+      type: date
+      display: Zeitpunkt
+      instructions: 'Leer = sofort nach der Freigabe.'
+      mode: single
+      time_enabled: true
+      width: 50
+  -
+    handle: social_hub_status_section
+    field:
+      type: section
+      display: 'Status im Social Hub'
+      instructions: 'Wird vom Social Hub automatisch aktualisiert.'
+  -
+    handle: social_hub_status_label
+    field:
+      type: text
+      display: Status
+      visibility: read_only
+      width: 33
+  -
+    handle: social_hub_sent_at
+    field:
+      type: text
+      display: 'Gesendet am'
+      visibility: read_only
+      width: 33
+  -
+    handle: social_hub_synced_at
+    field:
+      type: text
+      display: 'Letzte Rückmeldung'
+      visibility: read_only
+      width: 33
+  -
+    handle: social_hub_permalinks
+    field:
+      type: grid
+      display: Veröffentlichungen
+      visibility: read_only
+      mode: table
+      fields:
+        -
+          handle: account
+          field:
+            type: text
+            display: Konto
+        -
+          handle: platform
+          field:
+            type: text
+            display: Plattform
+        -
+          handle: status
+          field:
+            type: text
+            display: Status
+        -
+          handle: permalink
+          field:
+            type: text
+            display: Link
+  -
+    handle: social_hub_error
+    field:
+      type: textarea
+      display: Fehler
+      visibility: read_only
+      if:
+        social_hub_error: 'not empty'
+  -
+    handle: social_hub_status
+    field:
+      type: hidden
+      display: 'Status (intern)'
+  -
+    handle: social_hub_post_id
+    field:
+      type: text
+      display: 'Post-ID im Hub'
+      visibility: read_only

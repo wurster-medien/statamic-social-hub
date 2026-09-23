@@ -1,0 +1,59 @@
+{
+    "name": "wurster-medien/statamic-social-hub",
+    "description": "Statamic-Anbindung an den Social Hub von Wurster Medien: Feeds (Instagram, Facebook) lokal ausliefern und Einträge an den Hub senden.",
+    "type": "statamic-addon",
+    "license": "proprietary",
+    "keywords": [
+        "statamic",
+        "instagram",
+        "facebook",
+        "social"
+    ],
+    "authors": [
+        {
+            "name": "Wurster Medien",
+            "email": "dev@wurster-medien.de"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "statamic/cms": "^5.0 || ^6.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0 || ^10.0 || ^11.0",
+        "phpunit/phpunit": "^10.5 || ^11.0 || ^12.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "WursterMedien\\SocialHub\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "WursterMedien\\SocialHub\\Tests\\": "tests"
+        }
+    },
+    "extra": {
+        "statamic": {
+            "name": "Social Hub",
+            "slug": "social-hub",
+            "description": "Feeds und Posten über den Social Hub von Wurster Medien"
+        },
+        "laravel": {
+            "providers": [
+                "WursterMedien\\SocialHub\\ServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "pixelfear/composer-dist-plugin": true
+        },
+        "sort-packages": true
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
