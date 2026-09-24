@@ -52,6 +52,45 @@ class MediaMirrorTest extends TestCase
     }
 
     #[Test]
+    public function a_local_image_narrower_than_the_hub_reports_is_downloaded_again(): void
+    {
+        Http::fake(['hub.test/storage/*' => fn () => Http::response($this->jpeg(36, 64))]);
+        $disk = Storage::disk(MediaMirror::DISK);
+        $disk->put('rath_bau/10_thumb.jpg', $this->jpeg(12, 20));
+        $disk->put('rath_bau/10.mp4', 'video');
+        $video = $this->hubMedia('10', [
+            'media_type' => 'VIDEO',
+            'media_url' => 'https://hub.test/storage/social/10.mp4',
+            'thumbnail_url' => 'https://hub.test/storage/social/10_thumb.jpg',
+            'width' => 36,
+            'height' => 64,
+        ]);
+
+        $items = app(MediaMirror::class)->mirrorFeed('rath_bau', [$video]);
+
+        $this->assertSame('/social-hub/rath_bau/10_thumb.jpg', $items[0]['thumbnail_url']);
+        $this->assertSame(36, getimagesize($disk->path('rath_bau/10_thumb.jpg'))[0]);
+        $this->assertSame('video', $disk->get('rath_bau/10.mp4'));
+        Http::assertSentCount(1);
+
+        app(MediaMirror::class)->mirrorFeed('rath_bau', [$video]);
+
+        Http::assertSentCount(1);
+    }
+
+    #[Test]
+    public function a_failed_refresh_keeps_the_local_file(): void
+    {
+        Http::fake(['hub.test/storage/*' => Http::response('', 500)]);
+        Storage::disk(MediaMirror::DISK)->put('rath_bau/1.jpg', $this->jpeg(12, 20));
+
+        $items = app(MediaMirror::class)->mirrorFeed('rath_bau', [$this->hubMedia('1', ['width' => 36])]);
+
+        $this->assertSame('/social-hub/rath_bau/1.jpg', $items[0]['media_url']);
+        $this->assertSame(12, getimagesize(Storage::disk(MediaMirror::DISK)->path('rath_bau/1.jpg'))[0]);
+    }
+
+    #[Test]
     public function existing_files_are_not_downloaded_again(): void
     {
         Http::fake();

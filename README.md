@@ -163,6 +163,10 @@ vendor/bin/phpunit
 
 ### Unveröffentlicht
 
+- **Medien:** Ein gespiegeltes Bild bzw. Vorschaubild wird neu geladen, wenn der Hub eine größere Breite meldet (z. B. nach besseren Vorschaubildern für Facebook-Videos). Scheitert das, bleibt die lokale Datei.
+
+### 1.1.0
+
 - **Verbindungscode:** Die Seite lässt sich im Control Panel mit einem Code aus dem Hub verbinden, ohne die `.env` zu bearbeiten. Die Zugangsdaten liegen verschlüsselt unter `storage/app/social-hub/connection.json`; Werte aus der `.env` haben Vorrang. Neues Recht `connect social hub`.
 
 ### Sicherheitsprüfung

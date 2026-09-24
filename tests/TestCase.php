@@ -89,6 +89,15 @@ abstract class TestCase extends AddonTestCase
         ], $overrides);
     }
 
+    protected function jpeg(int $width, int $height): string
+    {
+        $image = imagecreatetruecolor($width, $height);
+        ob_start();
+        imagejpeg($image);
+
+        return (string) ob_get_clean();
+    }
+
     /**
      * @param  list<array<string, mixed>>  $items
      * @return array<string, mixed>

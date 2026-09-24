@@ -84,13 +84,17 @@ class MediaMirror
 
         $folder = StateStore::safeName($handle);
 
+        // width/height beschreiben das Bild bzw. bei Videos das Vorschaubild.
+        $width = is_numeric($item['width'] ?? null) ? (int) $item['width'] : null;
+
         if (is_string($item['media_url'] ?? null)) {
-            $download = $includeVideos || ! $this->isVideo($item, $item['media_url']);
-            $item['media_url'] = $this->mirror($item['media_url'], "{$folder}/{$id}", $deadline, $download);
+            $isVideo = $this->isVideo($item, $item['media_url']);
+            $download = $includeVideos || ! $isVideo;
+            $item['media_url'] = $this->mirror($item['media_url'], "{$folder}/{$id}", $deadline, $download, $isVideo ? null : $width);
         }
 
         if (is_string($item['thumbnail_url'] ?? null)) {
-            $item['thumbnail_url'] = $this->mirror($item['thumbnail_url'], "{$folder}/{$id}_thumb", $deadline);
+            $item['thumbnail_url'] = $this->mirror($item['thumbnail_url'], "{$folder}/{$id}_thumb", $deadline, true, $width);
         }
 
         if (is_array($item['children'] ?? null)) {
@@ -107,26 +111,31 @@ class MediaMirror
      * Lädt eine Datei, wenn sie noch nicht lokal liegt, und gibt die lokale URL
      * zurück. Bei Fehlern bleibt die ursprüngliche URL erhalten.
      *
+     * Ist die lokale Datei ein Bild und schmaler als $expectedWidth (der Hub hat ein größeres, z. B. ein besseres
+     * Vorschaubild), wird sie neu geladen. Scheitert das, bleibt die lokale Datei.
+     *
      * @param  bool  $download  false = nur eine bereits vorhandene Datei verwenden
+     * @param  int|null  $expectedWidth  Breite laut Hub, nur für Bilder
      */
-    public function mirror(string $url, string $basePath, ?float $deadline = null, bool $download = true): string
+    public function mirror(string $url, string $basePath, ?float $deadline = null, bool $download = true, ?int $expectedWidth = null): string
     {
         if (! $this->isEnabled() || $this->isLocal($url) || ! Str::startsWith($url, ['http://', 'https://'])) {
             return $url;
         }
 
         $path = $basePath.'.'.$this->extensionFromUrl($url);
+        $exists = $this->disk()->exists($path);
 
-        if ($this->disk()->exists($path)) {
+        if ($exists && ! $this->isSmallerThan($path, $expectedWidth)) {
             $this->stats['existing']++;
 
             return $this->localUrl($path);
         }
 
         if (! $download || ($deadline !== null && microtime(true) >= $deadline)) {
-            $this->stats['skipped']++;
+            $this->stats[$exists ? 'existing' : 'skipped']++;
 
-            return $url;
+            return $exists ? $this->localUrl($path) : $url;
         }
 
         try {
@@ -135,7 +144,7 @@ class MediaMirror
             $this->stats['failed']++;
             $this->failures[] = basename($path).': '.Str::limit($this->describeFailure($exception), 120);
 
-            return $url;
+            return $exists ? $this->localUrl($path) : $url;
         }
 
         $this->stats['downloaded']++;
@@ -313,6 +322,24 @@ class MediaMirror
     {
         $this->stats = ['downloaded' => 0, 'existing' => 0, 'failed' => 0, 'skipped' => 0];
         $this->failures = [];
+    }
+
+    /**
+     * Nur für lokale Disks prüfbar. Keine Angabe oder kein lesbares Bild: nicht kleiner.
+     */
+    protected function isSmallerThan(string $path, ?int $expectedWidth): bool
+    {
+        if ($expectedWidth === null || $expectedWidth <= 0) {
+            return false;
+        }
+
+        try {
+            $size = @getimagesize($this->disk()->path($path));
+        } catch (Throwable) {
+            return false;
+        }
+
+        return is_array($size) && $size[0] > 0 && $size[0] < $expectedWidth;
     }
 
     public function disk(): Filesystem
