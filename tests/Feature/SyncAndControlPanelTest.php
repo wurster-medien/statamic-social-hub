@@ -19,11 +19,11 @@ class SyncAndControlPanelTest extends TestCase
         parent::setUp();
 
         Http::fake([
-            'hub.test/api/v1/ping' => Http::response(['ok' => true, 'hub' => ['name' => 'Social Hub', 'api_version' => 'v1'], 'site' => ['id' => 1, 'name' => 'Rath Bau', 'client' => 'Rath']]),
+            'hub.test/api/v1/ping' => Http::response(['ok' => true, 'hub' => ['name' => 'Social Hub', 'api_version' => 'v1'], 'site' => ['id' => 1, 'name' => 'Muster Bau', 'client' => 'Muster']]),
             'hub.test/api/v1/accounts' => Http::response(['data' => [
-                ['handle' => 'rath_bau', 'platform' => 'instagram', 'username' => 'rath_bau', 'name' => 'Rath Bau', 'status' => 'active', 'last_synced_at' => '2026-09-24T08:00:00+00:00', 'can_publish' => true],
+                ['handle' => 'muster_bau', 'platform' => 'instagram', 'username' => 'muster_bau', 'name' => 'Muster Bau', 'status' => 'active', 'last_synced_at' => '2026-09-24T08:00:00+00:00', 'can_publish' => true],
             ]]),
-            'hub.test/api/v1/feeds/rath_bau*' => Http::response($this->hubFeed([$this->hubMedia('1'), $this->hubMedia('2')])),
+            'hub.test/api/v1/feeds/muster_bau*' => Http::response($this->hubFeed([$this->hubMedia('1'), $this->hubMedia('2')])),
             'hub.test/storage/*' => fn () => Http::response('bytes'),
         ]);
     }
@@ -31,20 +31,20 @@ class SyncAndControlPanelTest extends TestCase
     #[Test]
     public function the_sync_command_refreshes_feeds_mirrors_media_and_prunes(): void
     {
-        Storage::disk(MediaMirror::DISK)->put('rath_bau/alt.jpg', 'alt');
+        Storage::disk(MediaMirror::DISK)->put('muster_bau/alt.jpg', 'alt');
 
         $this->artisan('social-hub:sync')
-            ->expectsOutputToContain('Rath Bau')
+            ->expectsOutputToContain('Muster Bau')
             ->assertSuccessful();
 
-        Storage::disk(MediaMirror::DISK)->assertExists(['rath_bau/1.jpg', 'rath_bau/2.jpg']);
-        Storage::disk(MediaMirror::DISK)->assertMissing('rath_bau/alt.jpg');
+        Storage::disk(MediaMirror::DISK)->assertExists(['muster_bau/1.jpg', 'muster_bau/2.jpg']);
+        Storage::disk(MediaMirror::DISK)->assertMissing('muster_bau/alt.jpg');
 
-        $this->assertCount(2, app(StateStore::class)->feed('rath_bau')['data']);
+        $this->assertCount(2, app(StateStore::class)->feed('muster_bau')['data']);
 
         $status = app(SyncStatus::class)->all();
         $this->assertTrue($status['last_sync_ok']);
-        $this->assertArrayHasKey('rath_bau', $status['accounts']);
+        $this->assertArrayHasKey('muster_bau', $status['accounts']);
     }
 
     #[Test]
@@ -75,7 +75,7 @@ class SyncAndControlPanelTest extends TestCase
             ->assertOk()
             ->assertSee('Social Hub')
             ->assertSee('verbunden')
-            ->assertSee('rath_bau')
+            ->assertSee('muster_bau')
             ->assertSee('Jetzt synchronisieren')
             ->assertDontSee('test-site-key');
     }
@@ -88,7 +88,7 @@ class SyncAndControlPanelTest extends TestCase
             ->assertRedirect(cp_route('social-hub.index'))
             ->assertSessionHas('social_hub_ok', true);
 
-        Storage::disk(MediaMirror::DISK)->assertExists('rath_bau/1.jpg');
+        Storage::disk(MediaMirror::DISK)->assertExists('muster_bau/1.jpg');
     }
 
     #[Test]

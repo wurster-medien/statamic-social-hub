@@ -18,22 +18,22 @@ class FeedRepositoryTest extends TestCase
     public function it_fetches_mirrors_and_caches_the_feed(): void
     {
         Http::fake([
-            'hub.test/api/v1/feeds/rath_bau*' => Http::response($this->hubFeed([$this->hubMedia('1'), $this->hubMedia('2')])),
+            'hub.test/api/v1/feeds/muster_bau*' => Http::response($this->hubFeed([$this->hubMedia('1'), $this->hubMedia('2')])),
             'hub.test/storage/*' => fn () => Http::response('jpeg-bytes', 200, ['Content-Type' => 'image/jpeg']),
         ]);
 
         $repository = app(FeedRepository::class);
 
-        $items = $repository->items('rath_bau', 1);
+        $items = $repository->items('muster_bau', 1);
 
         $this->assertCount(1, $items);
-        $this->assertSame('/social-hub/rath_bau/1.jpg', $items[0]['media_url']);
+        $this->assertSame('/social-hub/muster_bau/1.jpg', $items[0]['media_url']);
 
         // Zweiter Aufruf kommt aus dem Cache: kein weiterer Feed-Abruf.
-        $repository->items('rath_bau');
+        $repository->items('muster_bau');
         Http::assertSentCount(3);
 
-        $stored = app(StateStore::class)->feed('rath_bau');
+        $stored = app(StateStore::class)->feed('muster_bau');
         $this->assertCount(2, $stored['data']);
         $this->assertNotNull($stored['fetched_at']);
     }
@@ -45,14 +45,14 @@ class FeedRepositoryTest extends TestCase
             'hub.test/api/v1/feeds/*' => Http::response(['message' => 'Server Error'], 500),
         ]);
 
-        app(StateStore::class)->putFeed('rath_bau', [
-            'handle' => 'rath_bau',
-            'data' => [$this->hubMedia('9', ['media_url' => '/social-hub/rath_bau/9.jpg'])],
+        app(StateStore::class)->putFeed('muster_bau', [
+            'handle' => 'muster_bau',
+            'data' => [$this->hubMedia('9', ['media_url' => '/social-hub/muster_bau/9.jpg'])],
             'meta' => [],
             'fetched_at' => Carbon::now()->subDays(3)->toIso8601String(),
         ]);
 
-        $feed = app(FeedRepository::class)->feed('rath_bau');
+        $feed = app(FeedRepository::class)->feed('muster_bau');
 
         $this->assertTrue($feed['stale']);
         $this->assertSame('9', $feed['data'][0]['id']);
@@ -62,7 +62,7 @@ class FeedRepositoryTest extends TestCase
         $this->assertStringNotContainsString('test-site-key', $errors[0]['message']);
 
         // Nach dem Fehler wird der Hub nicht bei jedem Aufruf erneut gefragt.
-        app(FeedRepository::class)->feed('rath_bau');
+        app(FeedRepository::class)->feed('muster_bau');
         Http::assertSentCount(1);
     }
 
@@ -75,14 +75,14 @@ class FeedRepositoryTest extends TestCase
             'hub.test/*' => Http::failedConnection(),
         ]);
 
-        app(StateStore::class)->putFeed('rath_bau', [
-            'handle' => 'rath_bau',
+        app(StateStore::class)->putFeed('muster_bau', [
+            'handle' => 'muster_bau',
             'data' => [$this->hubMedia('9')],
             'meta' => [],
             'fetched_at' => Carbon::now()->subDays(8)->toIso8601String(),
         ]);
 
-        $this->assertSame([], app(FeedRepository::class)->items('rath_bau'));
+        $this->assertSame([], app(FeedRepository::class)->items('muster_bau'));
 
         Log::shouldHaveReceived('warning')->withArgs(fn ($message) => str_contains($message, 'leere Liste'));
     }
@@ -93,7 +93,7 @@ class FeedRepositoryTest extends TestCase
         config(['social-hub.url' => null]);
         Http::fake();
 
-        $this->assertSame([], app(FeedRepository::class)->items('rath_bau'));
+        $this->assertSame([], app(FeedRepository::class)->items('muster_bau'));
         Http::assertNothingSent();
     }
 
@@ -108,11 +108,11 @@ class FeedRepositoryTest extends TestCase
 
         $repository = app(FeedRepository::class);
 
-        $this->assertCount(1, $repository->items('rath_bau'));
+        $this->assertCount(1, $repository->items('muster_bau'));
 
-        Cache::forget($repository->cacheKey('rath_bau'));
+        Cache::forget($repository->cacheKey('muster_bau'));
 
-        $this->assertSame(['2', '1'], array_column($repository->items('rath_bau'), 'id'));
+        $this->assertSame(['2', '1'], array_column($repository->items('muster_bau'), 'id'));
     }
 
     #[Test]
@@ -121,7 +121,7 @@ class FeedRepositoryTest extends TestCase
         $this->simulateWebRequest();
 
         Http::fake([
-            'hub.test/api/v1/feeds/rath_bau*' => Http::response($this->hubFeed([
+            'hub.test/api/v1/feeds/muster_bau*' => Http::response($this->hubFeed([
                 $this->hubMedia('1', [
                     'media_type' => 'VIDEO',
                     'media_url' => 'https://hub.test/storage/social/1.mp4',
@@ -132,11 +132,11 @@ class FeedRepositoryTest extends TestCase
             'hub.test/storage/*' => fn () => Http::response('bytes'),
         ]);
 
-        $items = app(FeedRepository::class)->items('rath_bau');
+        $items = app(FeedRepository::class)->items('muster_bau');
 
         $this->assertSame('https://hub.test/storage/social/1.mp4', $items[0]['media_url']);
-        $this->assertSame('/social-hub/rath_bau/1_thumb.jpg', $items[0]['thumbnail_url']);
-        $this->assertSame('/social-hub/rath_bau/2.jpg', $items[1]['media_url']);
+        $this->assertSame('/social-hub/muster_bau/1_thumb.jpg', $items[0]['thumbnail_url']);
+        $this->assertSame('/social-hub/muster_bau/2.jpg', $items[1]['media_url']);
         Http::assertNotSent(fn ($request) => str_ends_with($request->url(), '.mp4'));
     }
 
@@ -144,15 +144,15 @@ class FeedRepositoryTest extends TestCase
     public function the_sync_still_mirrors_videos(): void
     {
         Http::fake([
-            'hub.test/api/v1/feeds/rath_bau*' => Http::response($this->hubFeed([
+            'hub.test/api/v1/feeds/muster_bau*' => Http::response($this->hubFeed([
                 $this->hubMedia('1', ['media_type' => 'VIDEO', 'media_url' => 'https://hub.test/storage/social/1.mp4']),
             ])),
             'hub.test/storage/*' => fn () => Http::response('bytes'),
         ]);
 
-        $feed = app(FeedRepository::class)->refresh('rath_bau');
+        $feed = app(FeedRepository::class)->refresh('muster_bau');
 
-        $this->assertSame('/social-hub/rath_bau/1.mp4', $feed['data'][0]['media_url']);
+        $this->assertSame('/social-hub/muster_bau/1.mp4', $feed['data'][0]['media_url']);
     }
 
     /**

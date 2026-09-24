@@ -10,13 +10,14 @@ use Illuminate\Support\Str;
 use Psr\Http\Message\ResponseInterface;
 use RuntimeException;
 use Throwable;
+use WursterMedien\SocialHub\Support\HubConnection;
 use WursterMedien\SocialHub\Support\StateStore;
 
 /**
  * Spiegelt die Medien eines Feeds vom Hub nach public/{media_path}/{handle}/.
  *
  * Danach zeigen media_url und thumbnail_url auf lokale Pfade wie
- * /social-hub/rath_bau/1789.jpg, die der Browser direkt lädt und die Glide
+ * /social-hub/muster_bau/1789.jpg, die der Browser direkt lädt und die Glide
  * (src="/…" wird unter public/ gesucht) lokal verarbeiten kann.
  *
  * Bereits vorhandene Dateien werden nicht erneut geladen. Schlägt ein Download
@@ -25,6 +26,10 @@ use WursterMedien\SocialHub\Support\StateStore;
  *
  * Downloads laufen per Stream in eine temporäre Datei (nie komplett in den
  * Speicher) und brechen ab, sobald max_download_mb überschritten ist.
+ *
+ * Geladen wird nur vom Host des Hubs (und von den Hosts in media_hosts). Eine
+ * Medien-URL auf einen anderen Host bleibt unverändert stehen, damit die Seite
+ * keine beliebigen Adressen abruft, falls ein Feed manipuliert wurde.
  *
  * Schutz fremder Dateien: Ist media_path leer, "/" oder enthält "..", wird
  * weder gespiegelt noch aufgeräumt. prune() löscht nur Dateien nach dem eigenen
@@ -58,6 +63,8 @@ class MediaMirror
     protected array $failures = [];
 
     protected bool $warnedAboutConfiguration = false;
+
+    public function __construct(protected HubConnection $connection) {}
 
     /**
      * @param  list<array<string, mixed>>  $items
@@ -120,6 +127,13 @@ class MediaMirror
     public function mirror(string $url, string $basePath, ?float $deadline = null, bool $download = true, ?int $expectedWidth = null): string
     {
         if (! $this->isEnabled() || $this->isLocal($url) || ! Str::startsWith($url, ['http://', 'https://'])) {
+            return $url;
+        }
+
+        if (! $this->isAllowedSource($url)) {
+            $this->stats['skipped']++;
+            $this->failures[] = Str::limit('Nicht vom Hub, nicht geladen: '.parse_url($url, PHP_URL_HOST), 120);
+
             return $url;
         }
 
@@ -285,6 +299,23 @@ class MediaMirror
         }
 
         return $path;
+    }
+
+    /**
+     * Stammt die URL vom Hub selbst oder von einem Host aus media_hosts?
+     */
+    public function isAllowedSource(string $url): bool
+    {
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+
+        if ($host === '') {
+            return false;
+        }
+
+        $allowed = [parse_url((string) $this->connection->url(), PHP_URL_HOST), ...(array) config('social-hub.media_hosts', [])];
+        $allowed = array_map(strtolower(...), array_filter($allowed, is_string(...)));
+
+        return in_array($host, $allowed, true);
     }
 
     public function isLocal(string $url): bool

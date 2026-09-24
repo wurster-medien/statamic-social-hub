@@ -39,8 +39,8 @@ class WebhookTest extends TestCase
             'source_reference' => 'entry-1',
             'published_at' => '2026-09-24T09:00:00+02:00',
             'targets' => [
-                ['account' => 'rath_bau', 'platform' => 'instagram', 'type' => 'image', 'status' => 'published', 'permalink' => 'https://www.instagram.com/p/abc/', 'error' => null, 'published_at' => '2026-09-24T09:00:00+02:00'],
-                ['account' => 'rath_bau_fb', 'platform' => 'facebook_page', 'type' => 'image', 'status' => 'failed', 'permalink' => null, 'error' => 'Token abgelaufen', 'published_at' => null],
+                ['account' => 'muster_bau', 'platform' => 'instagram', 'type' => 'image', 'status' => 'published', 'permalink' => 'https://www.instagram.com/p/abc/', 'error' => null, 'published_at' => '2026-09-24T09:00:00+02:00'],
+                ['account' => 'muster_bau_fb', 'platform' => 'facebook_page', 'type' => 'image', 'status' => 'failed', 'permalink' => null, 'error' => 'Token abgelaufen', 'published_at' => null],
             ],
         ]));
 
@@ -50,7 +50,7 @@ class WebhookTest extends TestCase
         $this->assertSame('published', $entry->get('social_hub_status'));
         $this->assertSame('Veröffentlicht', $entry->get('social_hub_status_label'));
         $this->assertSame('https://www.instagram.com/p/abc/', $entry->get('social_hub_permalinks')[0]['permalink']);
-        $this->assertSame('rath_bau_fb: Token abgelaufen', $entry->get('social_hub_error'));
+        $this->assertSame('muster_bau_fb: Token abgelaufen', $entry->get('social_hub_error'));
     }
 
     #[Test]
@@ -182,29 +182,29 @@ class WebhookTest extends TestCase
     public function a_feed_update_reloads_the_feed_after_the_response(): void
     {
         $feeds = app(FeedRepository::class);
-        Cache::put($feeds->cacheKey('rath_bau'), ['handle' => 'rath_bau', 'data' => [$this->hubMedia('alt')], 'meta' => [], 'fetched_at' => null, 'stale' => false]);
+        Cache::put($feeds->cacheKey('muster_bau'), ['handle' => 'muster_bau', 'data' => [$this->hubMedia('alt')], 'meta' => [], 'fetched_at' => null, 'stale' => false]);
         Http::fake([
-            'hub.test/api/v1/feeds/rath_bau*' => Http::response($this->hubFeed([$this->hubMedia('neu')])),
+            'hub.test/api/v1/feeds/muster_bau*' => Http::response($this->hubFeed([$this->hubMedia('neu')])),
             'hub.test/storage/*' => Http::response('jpeg-bytes', 200, ['Content-Type' => 'image/jpeg']),
         ]);
 
-        $this->sendWebhook(['event' => 'feed.updated', 'account' => 'rath_bau', 'changed_at' => '2026-09-24T12:00:00+00:00'])
-            ->assertOk()->assertExactJson(['ok' => true, 'account' => 'rath_bau']);
+        $this->sendWebhook(['event' => 'feed.updated', 'account' => 'muster_bau', 'changed_at' => '2026-09-24T12:00:00+00:00'])
+            ->assertOk()->assertExactJson(['ok' => true, 'account' => 'muster_bau']);
 
-        $this->assertSame(['neu'], array_column($feeds->items('rath_bau'), 'id'));
-        $this->assertSame('/social-hub/rath_bau/neu.jpg', $feeds->items('rath_bau')[0]['media_url']);
+        $this->assertSame(['neu'], array_column($feeds->items('muster_bau'), 'id'));
+        $this->assertSame('/social-hub/muster_bau/neu.jpg', $feeds->items('muster_bau')[0]['media_url']);
     }
 
     #[Test]
     public function a_failed_reload_drops_the_cached_feed(): void
     {
         $feeds = app(FeedRepository::class);
-        Cache::put($feeds->cacheKey('rath_bau'), ['handle' => 'rath_bau', 'data' => [$this->hubMedia('alt')], 'meta' => [], 'fetched_at' => null, 'stale' => false]);
+        Cache::put($feeds->cacheKey('muster_bau'), ['handle' => 'muster_bau', 'data' => [$this->hubMedia('alt')], 'meta' => [], 'fetched_at' => null, 'stale' => false]);
         Http::fake(['hub.test/*' => Http::response(['message' => 'Server Error'], 500)]);
 
-        $this->sendWebhook(['event' => 'feed.updated', 'account' => 'rath_bau'])->assertOk();
+        $this->sendWebhook(['event' => 'feed.updated', 'account' => 'muster_bau'])->assertOk();
 
-        $this->assertNull(Cache::get($feeds->cacheKey('rath_bau')));
+        $this->assertNull(Cache::get($feeds->cacheKey('muster_bau')));
     }
 
     #[Test]

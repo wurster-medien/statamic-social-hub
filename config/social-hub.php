@@ -92,6 +92,9 @@ return [
     |                Bilder und Vorschaubilder geladen, keine Videos.
     | max_download_mb: größere Dateien (z. B. lange Videos) werden nicht
     |                gespiegelt, sondern weiter vom Hub ausgeliefert.
+    | media_hosts:   geladen wird nur vom Host des Hubs. Liefert der Hub Medien
+    |                über einen anderen Host aus (z. B. ein CDN), diesen hier
+    |                eintragen, etwa ['cdn.example.com'].
     |
     */
 
@@ -104,6 +107,8 @@ return [
     'mirror_budget_seconds' => 8,
 
     'max_download_mb' => 25,
+
+    'media_hosts' => [],
 
     /*
     |--------------------------------------------------------------------------
@@ -131,7 +136,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Posten aus Statamic (Phase 2)
+    | Posten aus Statamic
     |--------------------------------------------------------------------------
     |
     | publish_accounts: zusätzliche Handles für die Kanalauswahl im Fieldset,

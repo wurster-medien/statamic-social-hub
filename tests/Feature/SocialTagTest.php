@@ -19,10 +19,10 @@ class SocialTagTest extends TestCase
 
         Http::fake([
             'hub.test/api/v1/accounts' => Http::response(['data' => [
-                ['handle' => 'rath_bau', 'platform' => 'instagram', 'username' => 'rath_bau', 'name' => 'Rath Bau', 'status' => 'active'],
-                ['handle' => 'zinser', 'platform' => 'instagram', 'username' => 'zinser', 'name' => 'Zinser', 'status' => 'active'],
+                ['handle' => 'muster_bau', 'platform' => 'instagram', 'username' => 'muster_bau', 'name' => 'Muster Bau', 'status' => 'active'],
+                ['handle' => 'holzwerk', 'platform' => 'instagram', 'username' => 'holzwerk', 'name' => 'Holzwerk', 'status' => 'active'],
             ]]),
-            'hub.test/api/v1/feeds/rath_bau*' => Http::response($this->hubFeed([
+            'hub.test/api/v1/feeds/muster_bau*' => Http::response($this->hubFeed([
                 $this->hubMedia('1', [
                     'media_type' => 'VIDEO',
                     'media_url' => 'https://hub.test/storage/social/1.mp4',
@@ -38,7 +38,7 @@ class SocialTagTest extends TestCase
                 ]),
                 $this->hubMedia('3'),
             ])),
-            'hub.test/api/v1/feeds/zinser*' => Http::response($this->hubFeed([], 'zinser')),
+            'hub.test/api/v1/feeds/holzwerk*' => Http::response($this->hubFeed([], 'holzwerk')),
             'hub.test/api/v1/feeds/unbekannt*' => Http::response(['message' => 'Not found'], 404),
             'hub.test/storage/*' => fn () => Http::response('bytes'),
         ]);
@@ -47,11 +47,11 @@ class SocialTagTest extends TestCase
     #[Test]
     public function it_renders_the_feed_with_meta_field_names(): void
     {
-        $output = $this->render('{{ social:feed account="rath_bau" limit="2" }}[{{ count }}|{{ id }}|{{ media_type }}|{{ media_url }}|{{ thumbnail_url ?? "-" }}|{{ permalink }}|{{ like_count }}|{{ is_video ? "video" : "bild" }}]{{ /social:feed }}');
+        $output = $this->render('{{ social:feed account="muster_bau" limit="2" }}[{{ count }}|{{ id }}|{{ media_type }}|{{ media_url }}|{{ thumbnail_url ?? "-" }}|{{ permalink }}|{{ like_count }}|{{ is_video ? "video" : "bild" }}]{{ /social:feed }}');
 
         $this->assertSame(
-            '[1|1|VIDEO|/social-hub/rath_bau/1.mp4|/social-hub/rath_bau/1_thumb.jpg|https://www.instagram.com/p/1/|12|video]'
-            .'[2|2|CAROUSEL_ALBUM|/social-hub/rath_bau/2.jpg|-|https://www.instagram.com/p/2/|12|bild]',
+            '[1|1|VIDEO|/social-hub/muster_bau/1.mp4|/social-hub/muster_bau/1_thumb.jpg|https://www.instagram.com/p/1/|12|video]'
+            .'[2|2|CAROUSEL_ALBUM|/social-hub/muster_bau/2.jpg|-|https://www.instagram.com/p/2/|12|bild]',
             $output,
         );
     }
@@ -59,7 +59,7 @@ class SocialTagTest extends TestCase
     #[Test]
     public function it_adds_alt_text_without_hashtags_and_line_breaks(): void
     {
-        $output = $this->render('{{ social:feed account="rath_bau" limit="1" }}{{ alt }}{{ /social:feed }}');
+        $output = $this->render('{{ social:feed account="muster_bau" limit="1" }}{{ alt }}{{ /social:feed }}');
 
         $this->assertSame('Richtfest in Musterstadt! Danke an alle.', $output);
     }
@@ -77,10 +77,10 @@ class SocialTagTest extends TestCase
     #[Test]
     public function children_are_looped_and_inherit_the_alt_text(): void
     {
-        $output = $this->render('{{ social:feed account="rath_bau" limit="2" offset="1" }}{{ if children }}{{ children }}<{{ media_url }}|{{ alt }}>{{ /children }}{{ /if }}{{ /social:feed }}');
+        $output = $this->render('{{ social:feed account="muster_bau" limit="2" offset="1" }}{{ if children }}{{ children }}<{{ media_url }}|{{ alt }}>{{ /children }}{{ /if }}{{ /social:feed }}');
 
         $this->assertSame(
-            '</social-hub/rath_bau/21.jpg|Neues Projekt 2 fertig!></social-hub/rath_bau/22.jpg|Neues Projekt 2 fertig!>',
+            '</social-hub/muster_bau/21.jpg|Neues Projekt 2 fertig!></social-hub/muster_bau/22.jpg|Neues Projekt 2 fertig!>',
             $output,
         );
     }
@@ -97,9 +97,9 @@ class SocialTagTest extends TestCase
             ], 'xss')),
         ]);
 
-        $output = $this->render('{{ social:feed account="xss" }}<img alt="{{ alt }}">|{{ alt | entities }}|{{ caption_html }}|{{ caption | entities }}{{ /social:feed }}');
+        $output = $this->render('{{ social:feed account="xss" }}<img alt="{{ alt }}">|{{ alt | entities }}|{{ caption_html }}|{{ caption | entities }}|<a title="{{ caption }}">{{ /social:feed }}');
 
-        [$img, $altEntities, $captionHtml, $captionEntities] = explode('|', $output);
+        [$img, $altEntities, $captionHtml, $captionEntities, $captionAttribute] = explode('|', $output);
 
         $alt = 'Tom&#039;s &quot;Bau&quot; onerror=alert(1) &lt;script&gt;alert(2)&lt;/script&gt; &amp; Co Zweite Zeile';
 
@@ -110,26 +110,33 @@ class SocialTagTest extends TestCase
         $this->assertStringContainsString('&lt;script&gt;', $captionHtml);
         $this->assertMatchesRegularExpression('/&amp; Co<br>\s+Zweite Zeile #tag/', $captionHtml);
         $this->assertStringNotContainsString('<script>', $captionEntities);
+        // caption ist schon escaped: ohne Modifier sicher im Attribut, mit | entities nicht doppelt kodiert.
+        $this->assertStringStartsWith('<a title="Tom&#039;s &quot;Bau&quot; onerror=alert(1) &lt;script&gt;', $captionAttribute);
+        $this->assertStringStartsWith('Tom&#039;s &quot;Bau&quot; onerror=alert(1) &lt;script&gt;', $captionEntities);
     }
 
     #[Test]
-    public function caption_stays_raw_and_caption_html_is_offered(): void
+    public function caption_is_escaped_and_the_raw_text_is_offered_as_caption_raw(): void
     {
         $item = app(FeedItemPresenter::class)->present($this->hubMedia('5', [
             'caption' => "A <b>fett</b> & \"zitiert\"\r\nB",
-        ]), 'rath_bau');
+        ]), 'muster_bau');
 
-        $this->assertSame("A <b>fett</b> & \"zitiert\"\r\nB", $item['caption']);
+        $this->assertSame("A &lt;b&gt;fett&lt;/b&gt; &amp; &quot;zitiert&quot;\r\nB", $item['caption']);
+        $this->assertSame("A <b>fett</b> & \"zitiert\"\r\nB", $item['caption_raw']);
         $this->assertSame("A &lt;b&gt;fett&lt;/b&gt; &amp; &quot;zitiert&quot;<br>\r\nB", $item['caption_html']);
         $this->assertSame('A &lt;b&gt;fett&lt;/b&gt; &amp; &quot;zitiert&quot; B', $item['alt']);
-        $this->assertSame('Tom&#039;s', app(FeedItemPresenter::class)->present($this->hubMedia('7', ['caption' => "Tom's"]), 'rath_bau')['alt']);
-        $this->assertSame('', app(FeedItemPresenter::class)->present($this->hubMedia('6', ['caption' => null]), 'rath_bau')['caption_html']);
+        $this->assertSame('Tom&#039;s', app(FeedItemPresenter::class)->present($this->hubMedia('7', ['caption' => "Tom's"]), 'muster_bau')['alt']);
+        $withoutCaption = app(FeedItemPresenter::class)->present($this->hubMedia('6', ['caption' => null]), 'muster_bau');
+        $this->assertSame('', $withoutCaption['caption_html']);
+        $this->assertNull($withoutCaption['caption']);
+        $this->assertNull($withoutCaption['caption_raw']);
     }
 
     #[Test]
     public function the_handle_parameter_is_an_alias_for_account(): void
     {
-        $output = $this->render('{{ social:feed handle="rath_bau" limit="3" }}{{ id }},{{ /social:feed }}');
+        $output = $this->render('{{ social:feed handle="muster_bau" limit="3" }}{{ id }},{{ /social:feed }}');
 
         $this->assertSame('1,2,3,', $output);
     }
@@ -137,7 +144,7 @@ class SocialTagTest extends TestCase
     #[Test]
     public function the_as_parameter_provides_a_list_variable(): void
     {
-        $output = $this->render('{{ social:feed handle="rath_bau" limit="3" as="posts" }}{{ total_results }}:{{ posts limit="2" }}{{ id }};{{ /posts }}{{ /social:feed }}');
+        $output = $this->render('{{ social:feed handle="muster_bau" limit="3" as="posts" }}{{ total_results }}:{{ posts limit="2" }}{{ id }};{{ /posts }}{{ /social:feed }}');
 
         $this->assertSame('3:1;2;', $output);
     }
@@ -145,7 +152,7 @@ class SocialTagTest extends TestCase
     #[Test]
     public function an_empty_feed_renders_no_results(): void
     {
-        $output = $this->render('{{ social:feed account="zinser" }}{{ if no_results }}Keine Beiträge{{ else }}{{ id }}{{ /if }}{{ /social:feed }}');
+        $output = $this->render('{{ social:feed account="holzwerk" }}{{ if no_results }}Keine Beiträge{{ else }}{{ id }}{{ /if }}{{ /social:feed }}');
 
         $this->assertSame('Keine Beiträge', $output);
     }
@@ -163,7 +170,7 @@ class SocialTagTest extends TestCase
     {
         $this->assertSame('1', $this->render('{{ social:feed limit="1" }}{{ id }}{{ /social:feed }}'));
 
-        config(['social-hub.default_account' => 'zinser']);
+        config(['social-hub.default_account' => 'holzwerk']);
 
         $this->assertSame('leer', $this->render('{{ social:feed }}{{ if no_results }}leer{{ /if }}{{ /social:feed }}'));
     }
@@ -171,7 +178,7 @@ class SocialTagTest extends TestCase
     #[Test]
     public function date_is_a_carbon_instance(): void
     {
-        $output = $this->render('{{ social:feed account="rath_bau" limit="1" }}{{ date format="d.m.Y H:i" }}|{{ timestamp }}{{ /social:feed }}');
+        $output = $this->render('{{ social:feed account="muster_bau" limit="1" }}{{ date format="d.m.Y H:i" }}|{{ timestamp }}{{ /social:feed }}');
 
         $this->assertSame('20.09.2026 12:15|2026-09-20T10:15:00+00:00', $output);
     }
@@ -179,7 +186,7 @@ class SocialTagTest extends TestCase
     #[Test]
     public function a_missing_social_variable_does_not_trigger_the_feed(): void
     {
-        // Templates wie zinser-holzbau nutzen {{ social }} … {{ /social }} bzw.
+        // Manche Templates nutzen {{ social }} … {{ /social }} bzw.
         // {{ social:label }} als Variable. Fehlt sie, darf kein Feed erscheinen.
         $output = $this->render(
             '{{ links }}<{{ social }}X{{ /social }}|{{ social:label }}>{{ /links }}',
@@ -193,15 +200,15 @@ class SocialTagTest extends TestCase
     #[Test]
     public function a_single_media_item_can_be_rendered(): void
     {
-        $output = $this->render('{{ social:media account="rath_bau" id="3" }}{{ id }}|{{ media_url }}{{ /social:media }}');
+        $output = $this->render('{{ social:media account="muster_bau" id="3" }}{{ id }}|{{ media_url }}{{ /social:media }}');
 
-        $this->assertSame('3|/social-hub/rath_bau/3.jpg', $output);
+        $this->assertSame('3|/social-hub/muster_bau/3.jpg', $output);
     }
 
     #[Test]
     public function accounts_are_listed(): void
     {
-        $this->assertSame('rath_bau,zinser,', $this->render('{{ social:accounts }}{{ handle }},{{ /social:accounts }}'));
+        $this->assertSame('muster_bau,holzwerk,', $this->render('{{ social:accounts }}{{ handle }},{{ /social:accounts }}'));
     }
 
     #[Test]
@@ -209,7 +216,7 @@ class SocialTagTest extends TestCase
     {
         // Glide sucht Pfade, die mit "/" beginnen, unter public/. Ein relativer
         // Pfad (statt einer Hub-URL) ist deshalb die Voraussetzung.
-        $item = $this->render('{{ social:feed account="rath_bau" limit="1" offset="2" }}{{ media_url }}{{ /social:feed }}');
+        $item = $this->render('{{ social:feed account="muster_bau" limit="1" offset="2" }}{{ media_url }}{{ /social:feed }}');
 
         $this->assertStringStartsWith('/social-hub/', $item);
         $this->assertTrue(Str::isUrl($item));

@@ -11,9 +11,9 @@ use WursterMedien\SocialHub\Feeds\FeedRepository;
 /**
  * Antlers-Tag für Feeds aus dem Social Hub.
  *
- *   {{ social:feed account="rath_bau" limit="12" }} … {{ /social:feed }}
- *   {{ social:feed handle="rath_bau" as="posts" }} {{ posts }} … {{ /posts }} {{ /social:feed }}
- *   {{ social:media account="rath_bau" id="1789…" }} … {{ /social:media }}
+ *   {{ social:feed account="muster_bau" limit="12" }} … {{ /social:feed }}
+ *   {{ social:feed handle="muster_bau" as="posts" }} {{ posts }} … {{ /posts }} {{ /social:feed }}
+ *   {{ social:media account="muster_bau" id="1789…" }} … {{ /social:media }}
  *   {{ social:accounts }} {{ handle }} {{ /social:accounts }}
  *
  * Fehler beim Hub landen nie im Template: dann gibt es den letzten guten Feed

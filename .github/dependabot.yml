@@ -1,0 +1,13 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: composer
+    directory: /
+    schedule:
+      interval: monthly
+    # Nur Sicherheitsupdates als Pull Request, die Versionsbereiche in composer.json bleiben.
+    open-pull-requests-limit: 0

@@ -56,8 +56,8 @@ class MediaMirrorTest extends TestCase
     {
         Http::fake(['hub.test/storage/*' => fn () => Http::response($this->jpeg(36, 64))]);
         $disk = Storage::disk(MediaMirror::DISK);
-        $disk->put('rath_bau/10_thumb.jpg', $this->jpeg(12, 20));
-        $disk->put('rath_bau/10.mp4', 'video');
+        $disk->put('muster_bau/10_thumb.jpg', $this->jpeg(12, 20));
+        $disk->put('muster_bau/10.mp4', 'video');
         $video = $this->hubMedia('10', [
             'media_type' => 'VIDEO',
             'media_url' => 'https://hub.test/storage/social/10.mp4',
@@ -66,14 +66,14 @@ class MediaMirrorTest extends TestCase
             'height' => 64,
         ]);
 
-        $items = app(MediaMirror::class)->mirrorFeed('rath_bau', [$video]);
+        $items = app(MediaMirror::class)->mirrorFeed('muster_bau', [$video]);
 
-        $this->assertSame('/social-hub/rath_bau/10_thumb.jpg', $items[0]['thumbnail_url']);
-        $this->assertSame(36, getimagesize($disk->path('rath_bau/10_thumb.jpg'))[0]);
-        $this->assertSame('video', $disk->get('rath_bau/10.mp4'));
+        $this->assertSame('/social-hub/muster_bau/10_thumb.jpg', $items[0]['thumbnail_url']);
+        $this->assertSame(36, getimagesize($disk->path('muster_bau/10_thumb.jpg'))[0]);
+        $this->assertSame('video', $disk->get('muster_bau/10.mp4'));
         Http::assertSentCount(1);
 
-        app(MediaMirror::class)->mirrorFeed('rath_bau', [$video]);
+        app(MediaMirror::class)->mirrorFeed('muster_bau', [$video]);
 
         Http::assertSentCount(1);
     }
@@ -82,23 +82,23 @@ class MediaMirrorTest extends TestCase
     public function a_failed_refresh_keeps_the_local_file(): void
     {
         Http::fake(['hub.test/storage/*' => Http::response('', 500)]);
-        Storage::disk(MediaMirror::DISK)->put('rath_bau/1.jpg', $this->jpeg(12, 20));
+        Storage::disk(MediaMirror::DISK)->put('muster_bau/1.jpg', $this->jpeg(12, 20));
 
-        $items = app(MediaMirror::class)->mirrorFeed('rath_bau', [$this->hubMedia('1', ['width' => 36])]);
+        $items = app(MediaMirror::class)->mirrorFeed('muster_bau', [$this->hubMedia('1', ['width' => 36])]);
 
-        $this->assertSame('/social-hub/rath_bau/1.jpg', $items[0]['media_url']);
-        $this->assertSame(12, getimagesize(Storage::disk(MediaMirror::DISK)->path('rath_bau/1.jpg'))[0]);
+        $this->assertSame('/social-hub/muster_bau/1.jpg', $items[0]['media_url']);
+        $this->assertSame(12, getimagesize(Storage::disk(MediaMirror::DISK)->path('muster_bau/1.jpg'))[0]);
     }
 
     #[Test]
     public function existing_files_are_not_downloaded_again(): void
     {
         Http::fake();
-        Storage::disk(MediaMirror::DISK)->put('rath_bau/1.jpg', 'old');
+        Storage::disk(MediaMirror::DISK)->put('muster_bau/1.jpg', 'old');
 
-        $items = app(MediaMirror::class)->mirrorFeed('rath_bau', [$this->hubMedia('1')]);
+        $items = app(MediaMirror::class)->mirrorFeed('muster_bau', [$this->hubMedia('1')]);
 
-        $this->assertSame('/social-hub/rath_bau/1.jpg', $items[0]['media_url']);
+        $this->assertSame('/social-hub/muster_bau/1.jpg', $items[0]['media_url']);
         Http::assertNothingSent();
     }
 
@@ -110,9 +110,9 @@ class MediaMirrorTest extends TestCase
         ]);
 
         $mirror = app(MediaMirror::class);
-        $items = $mirror->mirrorFeed('rath_bau', [$this->hubMedia('1')]);
+        $items = $mirror->mirrorFeed('muster_bau', [$this->hubMedia('1')]);
 
-        $this->assertSame('https://hub.test/storage/social/rath_bau/1.jpg', $items[0]['media_url']);
+        $this->assertSame('https://hub.test/storage/social/muster_bau/1.jpg', $items[0]['media_url']);
         $this->assertSame(1, $mirror->stats()['failed']);
     }
 
@@ -122,7 +122,7 @@ class MediaMirrorTest extends TestCase
         Http::fake();
 
         $mirror = app(MediaMirror::class);
-        $items = $mirror->mirrorFeed('rath_bau', [$this->hubMedia('1')], microtime(true) - 1);
+        $items = $mirror->mirrorFeed('muster_bau', [$this->hubMedia('1')], microtime(true) - 1);
 
         $this->assertStringStartsWith('https://hub.test/', $items[0]['media_url']);
         $this->assertSame(1, $mirror->stats()['skipped']);
@@ -133,19 +133,19 @@ class MediaMirrorTest extends TestCase
     public function it_prunes_files_that_are_no_longer_referenced(): void
     {
         $disk = Storage::disk(MediaMirror::DISK);
-        $disk->put('rath_bau/1.jpg', 'a');
-        $disk->put('rath_bau/2.jpg', 'b');
+        $disk->put('muster_bau/1.jpg', 'a');
+        $disk->put('muster_bau/2.jpg', 'b');
         $disk->put('alt/3.jpg', 'c');
 
         $mirror = app(MediaMirror::class);
         $keep = $mirror->referencedPaths([
-            $this->hubMedia('1', ['media_url' => '/social-hub/rath_bau/1.jpg']),
+            $this->hubMedia('1', ['media_url' => '/social-hub/muster_bau/1.jpg']),
         ]);
 
         $this->assertSame(2, $mirror->prune($keep));
 
-        $disk->assertExists('rath_bau/1.jpg');
-        $disk->assertMissing(['rath_bau/2.jpg', 'alt/3.jpg']);
+        $disk->assertExists('muster_bau/1.jpg');
+        $disk->assertMissing(['muster_bau/2.jpg', 'alt/3.jpg']);
     }
 
     #[Test]
@@ -156,6 +156,38 @@ class MediaMirrorTest extends TestCase
         $items = app(MediaMirror::class)->mirrorFeed('../evil', [$this->hubMedia('1/../../x')]);
 
         $this->assertSame('/social-hub/_evil/1x.jpg', $items[0]['media_url']);
+    }
+
+    #[Test]
+    public function media_from_other_hosts_is_not_downloaded(): void
+    {
+        Http::fake(['*' => fn () => Http::response('bytes')]);
+
+        $mirror = app(MediaMirror::class);
+        $items = $mirror->mirrorFeed('muster_bau', [
+            $this->hubMedia('1', ['media_url' => 'http://169.254.169.254/latest/meta-data.jpg']),
+            $this->hubMedia('2', ['media_url' => 'https://hub.test.evil.example/2.jpg']),
+        ]);
+
+        $this->assertSame('http://169.254.169.254/latest/meta-data.jpg', $items[0]['media_url']);
+        $this->assertSame('https://hub.test.evil.example/2.jpg', $items[1]['media_url']);
+        $this->assertSame(2, $mirror->stats()['skipped']);
+        $this->assertStringContainsString('169.254.169.254', $mirror->failures()[0]);
+        Http::assertNothingSent();
+        $this->assertSame([], Storage::disk(MediaMirror::DISK)->allFiles());
+    }
+
+    #[Test]
+    public function additional_media_hosts_can_be_allowed(): void
+    {
+        config(['social-hub.media_hosts' => ['CDN.example.com']]);
+        Http::fake(['cdn.example.com/*' => fn () => Http::response('bytes')]);
+
+        $items = app(MediaMirror::class)->mirrorFeed('muster_bau', [
+            $this->hubMedia('1', ['media_url' => 'https://cdn.example.com/social/1.jpg']),
+        ]);
+
+        $this->assertSame('/social-hub/muster_bau/1.jpg', $items[0]['media_url']);
     }
 
     #[Test]
@@ -170,10 +202,10 @@ class MediaMirrorTest extends TestCase
             return Http::response('bytes');
         });
 
-        $items = app(MediaMirror::class)->mirrorFeed('rath_bau', [$this->hubMedia('1')]);
+        $items = app(MediaMirror::class)->mirrorFeed('muster_bau', [$this->hubMedia('1')]);
 
-        $this->assertSame('/social-hub/rath_bau/1.jpg', $items[0]['media_url']);
-        $this->assertSame('bytes', Storage::disk(MediaMirror::DISK)->get('rath_bau/1.jpg'));
+        $this->assertSame('/social-hub/muster_bau/1.jpg', $items[0]['media_url']);
+        $this->assertSame('bytes', Storage::disk(MediaMirror::DISK)->get('muster_bau/1.jpg'));
 
         // Stream direkt in eine Datei statt in den Speicher; die Datei ist danach weg.
         $this->assertIsString($options['sink']);
@@ -214,12 +246,12 @@ class MediaMirrorTest extends TestCase
         ]);
 
         $mirror = app(MediaMirror::class);
-        $items = $mirror->mirrorFeed('rath_bau', [$this->hubMedia('1')]);
+        $items = $mirror->mirrorFeed('muster_bau', [$this->hubMedia('1')]);
 
-        $this->assertSame('https://hub.test/storage/social/rath_bau/1.jpg', $items[0]['media_url']);
+        $this->assertSame('https://hub.test/storage/social/muster_bau/1.jpg', $items[0]['media_url']);
         $this->assertSame(1, $mirror->stats()['failed']);
         $this->assertStringContainsString('zu groß', $mirror->failures()[0]);
-        Storage::disk(MediaMirror::DISK)->assertMissing('rath_bau/1.jpg');
+        Storage::disk(MediaMirror::DISK)->assertMissing('muster_bau/1.jpg');
     }
 
     #[Test]
@@ -232,21 +264,21 @@ class MediaMirrorTest extends TestCase
         ]);
 
         $mirror = app(MediaMirror::class);
-        $items = $mirror->mirrorFeed('rath_bau', [$this->hubMedia('1')]);
+        $items = $mirror->mirrorFeed('muster_bau', [$this->hubMedia('1')]);
 
         $this->assertStringStartsWith('https://hub.test/', $items[0]['media_url']);
         $this->assertSame(1, $mirror->stats()['failed']);
-        Storage::disk(MediaMirror::DISK)->assertMissing('rath_bau/1.jpg');
+        Storage::disk(MediaMirror::DISK)->assertMissing('muster_bau/1.jpg');
     }
 
     #[Test]
     public function videos_can_be_left_on_the_hub_while_images_and_thumbnails_are_mirrored(): void
     {
         Http::fake(['hub.test/storage/*' => fn () => Http::response('bytes')]);
-        Storage::disk(MediaMirror::DISK)->put('rath_bau/30.mp4', 'old');
+        Storage::disk(MediaMirror::DISK)->put('muster_bau/30.mp4', 'old');
 
         $mirror = app(MediaMirror::class);
-        $items = $mirror->mirrorFeed('rath_bau', [
+        $items = $mirror->mirrorFeed('muster_bau', [
             $this->hubMedia('10', [
                 'media_type' => 'VIDEO',
                 'media_url' => 'https://hub.test/storage/social/10.mp4',
@@ -263,12 +295,12 @@ class MediaMirrorTest extends TestCase
         ], null, false);
 
         $this->assertSame('https://hub.test/storage/social/10.mp4', $items[0]['media_url']);
-        $this->assertSame('/social-hub/rath_bau/10_thumb.jpg', $items[0]['thumbnail_url']);
-        $this->assertSame('/social-hub/rath_bau/20.jpg', $items[1]['media_url']);
+        $this->assertSame('/social-hub/muster_bau/10_thumb.jpg', $items[0]['thumbnail_url']);
+        $this->assertSame('/social-hub/muster_bau/20.jpg', $items[1]['media_url']);
         $this->assertSame('https://hub.test/storage/social/21.mp4', $items[1]['children'][0]['media_url']);
-        $this->assertSame('/social-hub/rath_bau/22.jpg', $items[1]['children'][1]['media_url']);
+        $this->assertSame('/social-hub/muster_bau/22.jpg', $items[1]['children'][1]['media_url']);
         // Bereits gespiegelte Videos werden weiter lokal ausgeliefert.
-        $this->assertSame('/social-hub/rath_bau/30.mp4', $items[2]['media_url']);
+        $this->assertSame('/social-hub/muster_bau/30.mp4', $items[2]['media_url']);
 
         Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '.mp4'));
     }
@@ -277,20 +309,20 @@ class MediaMirrorTest extends TestCase
     public function prune_only_deletes_files_matching_the_own_naming_scheme(): void
     {
         $disk = Storage::disk(MediaMirror::DISK);
-        $disk->put('rath_bau/1.jpg', 'behalten');
-        $disk->put('rath_bau/2_thumb.webp', 'weg');
-        $disk->put('rath_bau/notes.txt', 'fremd');
-        $disk->put('rath_bau/.gitignore', 'fremd');
-        $disk->put('rath_bau/sub/5.jpg', 'fremd');
+        $disk->put('muster_bau/1.jpg', 'behalten');
+        $disk->put('muster_bau/2_thumb.webp', 'weg');
+        $disk->put('muster_bau/notes.txt', 'fremd');
+        $disk->put('muster_bau/.gitignore', 'fremd');
+        $disk->put('muster_bau/sub/5.jpg', 'fremd');
         $disk->put('index.html', 'fremd');
         $disk->put('4.jpg', 'fremd');
         $disk->put('alt/3.mp4', 'weg');
 
-        $deleted = app(MediaMirror::class)->prune(['rath_bau/1.jpg']);
+        $deleted = app(MediaMirror::class)->prune(['muster_bau/1.jpg']);
 
         $this->assertSame(2, $deleted);
-        $disk->assertMissing(['rath_bau/2_thumb.webp', 'alt/3.mp4', 'alt']);
-        $disk->assertExists(['rath_bau/1.jpg', 'rath_bau/notes.txt', 'rath_bau/.gitignore', 'rath_bau/sub/5.jpg', 'index.html', '4.jpg']);
+        $disk->assertMissing(['muster_bau/2_thumb.webp', 'alt/3.mp4', 'alt']);
+        $disk->assertExists(['muster_bau/1.jpg', 'muster_bau/notes.txt', 'muster_bau/.gitignore', 'muster_bau/sub/5.jpg', 'index.html', '4.jpg']);
     }
 
     #[Test]
@@ -302,14 +334,14 @@ class MediaMirrorTest extends TestCase
         Log::spy();
 
         $disk = Storage::disk(MediaMirror::DISK);
-        $disk->put('rath_bau/2.jpg', 'fremd');
+        $disk->put('muster_bau/2.jpg', 'fremd');
 
         $mirror = app(MediaMirror::class);
-        $items = $mirror->mirrorFeed('rath_bau', [$this->hubMedia('1'), $this->hubMedia('2')]);
+        $items = $mirror->mirrorFeed('muster_bau', [$this->hubMedia('1'), $this->hubMedia('2')]);
 
-        $this->assertSame('https://hub.test/storage/social/rath_bau/1.jpg', $items[0]['media_url']);
+        $this->assertSame('https://hub.test/storage/social/muster_bau/1.jpg', $items[0]['media_url']);
         $this->assertSame(0, $mirror->prune([]));
-        $disk->assertExists('rath_bau/2.jpg');
+        $disk->assertExists('muster_bau/2.jpg');
         Http::assertNothingSent();
 
         Log::shouldHaveReceived('warning')->once()->withArgs(fn (string $message) => str_contains($message, 'media_path'));
@@ -336,10 +368,10 @@ class MediaMirrorTest extends TestCase
         config(['filesystems.disks.'.MediaMirror::DISK.'.root' => public_path()]);
 
         $disk = Storage::disk(MediaMirror::DISK);
-        $disk->put('rath_bau/2.jpg', 'fremd');
+        $disk->put('muster_bau/2.jpg', 'fremd');
 
         $this->assertNotNull(MediaMirror::configurationProblem());
         $this->assertSame(0, app(MediaMirror::class)->prune([]));
-        $disk->assertExists('rath_bau/2.jpg');
+        $disk->assertExists('muster_bau/2.jpg');
     }
 }

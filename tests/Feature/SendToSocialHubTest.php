@@ -62,17 +62,17 @@ class SendToSocialHubTest extends TestCase
     {
         Http::fake([
             'hub.test/api/v1/accounts' => Http::response(['data' => [
-                ['handle' => 'rath_bau', 'platform' => 'instagram', 'name' => 'Rath Bau', 'can_publish' => true],
+                ['handle' => 'muster_bau', 'platform' => 'instagram', 'name' => 'Muster Bau', 'can_publish' => true],
                 ['handle' => 'nur_lesen', 'platform' => 'instagram', 'name' => 'Nur lesen', 'can_publish' => false],
             ]]),
         ]);
-        config(['social-hub.publish_accounts' => ['rath_bau_fb' => 'Rath Bau (Facebook)']]);
+        config(['social-hub.publish_accounts' => ['muster_bau_fb' => 'Muster Bau (Facebook)']]);
 
         $options = Dictionary::find('social_hub_accounts')->options();
 
         $this->assertSame([
-            'rath_bau' => 'Rath Bau (Instagram)',
-            'rath_bau_fb' => 'Rath Bau (Facebook)',
+            'muster_bau' => 'Muster Bau (Instagram)',
+            'muster_bau_fb' => 'Muster Bau (Facebook)',
         ], $options);
     }
 
@@ -81,9 +81,9 @@ class SendToSocialHubTest extends TestCase
     {
         $entry = $this->entry([
             'social_hub_targets' => [
-                ['enabled' => true, 'account' => 'rath_bau', 'type' => 'image', 'caption' => 'Nur für Instagram'],
-                ['enabled' => false, 'account' => 'rath_bau_fb'],
-                ['enabled' => true, 'account' => ['rath_bau_fb2']],
+                ['enabled' => true, 'account' => 'muster_bau', 'type' => 'image', 'caption' => 'Nur für Instagram'],
+                ['enabled' => false, 'account' => 'muster_bau_fb'],
+                ['enabled' => true, 'account' => ['muster_bau_fb2']],
             ],
             'social_hub_images' => ['richtfest.jpg'],
             'social_hub_scheduled_at' => '2026-10-01 09:30',
@@ -100,8 +100,8 @@ class SendToSocialHubTest extends TestCase
         $this->assertSame('entry-1', $payload['source_reference']);
         $this->assertSame([['url' => $siteUrl.'/assets/richtfest.jpg', 'alt' => 'Richtfest auf der Baustelle']], $payload['media']);
         $this->assertSame([
-            ['account' => 'rath_bau', 'caption' => 'Nur für Instagram', 'type' => 'image'],
-            ['account' => 'rath_bau_fb2'],
+            ['account' => 'muster_bau', 'caption' => 'Nur für Instagram', 'type' => 'image'],
+            ['account' => 'muster_bau_fb2'],
         ], $payload['targets']);
         $this->assertTrue($payload['submit']);
     }
@@ -115,12 +115,12 @@ class SendToSocialHubTest extends TestCase
                 'status' => 'pending_approval',
                 'status_label' => 'Wartet auf Freigabe',
                 'source_reference' => 'entry-1',
-                'targets' => [['account' => 'rath_bau', 'platform' => 'instagram', 'type' => 'image', 'status' => 'pending', 'permalink' => null, 'error' => null, 'published_at' => null]],
+                'targets' => [['account' => 'muster_bau', 'platform' => 'instagram', 'type' => 'image', 'status' => 'pending', 'permalink' => null, 'error' => null, 'published_at' => null]],
             ]], 201),
         ]);
 
         $entry = $this->entry([
-            'social_hub_targets' => [['enabled' => true, 'account' => 'rath_bau']],
+            'social_hub_targets' => [['enabled' => true, 'account' => 'muster_bau']],
             'social_hub_text' => 'Eigener Text',
             'social_hub_include_link' => false,
         ]);
@@ -147,7 +147,7 @@ class SendToSocialHubTest extends TestCase
     {
         Http::fake(['hub.test/api/v1/posts' => Http::response(['message' => 'Locked'], 409)]);
 
-        $entry = $this->entry(['social_hub_targets' => [['enabled' => true, 'account' => 'rath_bau']]]);
+        $entry = $this->entry(['social_hub_targets' => [['enabled' => true, 'account' => 'muster_bau']]]);
 
         $this->expectExceptionMessage('bereits freigegeben oder veröffentlicht');
 
@@ -165,7 +165,7 @@ class SendToSocialHubTest extends TestCase
             throw new ConnectionException('cURL error 28: Operation timed out after 120001 milliseconds with 0 bytes received');
         });
 
-        $entry = $this->entry(['social_hub_targets' => [['enabled' => true, 'account' => 'rath_bau']]]);
+        $entry = $this->entry(['social_hub_targets' => [['enabled' => true, 'account' => 'muster_bau']]]);
 
         try {
             (new SendToSocialHub)->run(collect([$entry]), []);
@@ -184,7 +184,7 @@ class SendToSocialHubTest extends TestCase
     {
         Http::fake();
 
-        $entry = $this->entry(['social_hub_targets' => [['enabled' => false, 'account' => 'rath_bau']]]);
+        $entry = $this->entry(['social_hub_targets' => [['enabled' => false, 'account' => 'muster_bau']]]);
 
         try {
             (new SendToSocialHub)->run(collect([$entry]), []);
@@ -227,7 +227,7 @@ class SendToSocialHubTest extends TestCase
     {
         Http::fake();
 
-        $entry = $this->entry(['social_hub_targets' => [['enabled' => true, 'account' => 'rath_bau']]]);
+        $entry = $this->entry(['social_hub_targets' => [['enabled' => true, 'account' => 'muster_bau']]]);
         $entry->set('title', 'Geändert')->save();
 
         Http::assertNothingSent();

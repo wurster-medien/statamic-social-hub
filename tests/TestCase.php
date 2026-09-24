@@ -76,7 +76,7 @@ abstract class TestCase extends AddonTestCase
             'id' => $id,
             'media_type' => 'IMAGE',
             'media_product_type' => 'FEED',
-            'media_url' => "https://hub.test/storage/social/rath_bau/{$id}.jpg",
+            'media_url' => "https://hub.test/storage/social/muster_bau/{$id}.jpg",
             'thumbnail_url' => null,
             'permalink' => "https://www.instagram.com/p/{$id}/",
             'caption' => "Neues Projekt {$id} fertig! #holzbau #handwerk",
@@ -102,7 +102,7 @@ abstract class TestCase extends AddonTestCase
      * @param  list<array<string, mixed>>  $items
      * @return array<string, mixed>
      */
-    protected function hubFeed(array $items, string $handle = 'rath_bau'): array
+    protected function hubFeed(array $items, string $handle = 'muster_bau'): array
     {
         return [
             'data' => $items,

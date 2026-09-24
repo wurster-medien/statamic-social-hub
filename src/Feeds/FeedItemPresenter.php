@@ -9,13 +9,14 @@ use Throwable;
  * Bereitet ein Medium für Templates auf.
  *
  * Die Feldnamen des Hubs (wie bei der Meta-API) bleiben unverändert. Dazu
- * kommen: alt, caption_html, is_video, date (Carbon), account und extension.
+ * kommen: alt, caption_html, caption_raw, is_video, date (Carbon), account und
+ * extension.
  *
  * Sicherheit: Antlers escaped Variablen nicht automatisch, die Texte stammen
- * aber aus fremden Social-Media-Konten. alt und caption_html sind deshalb
- * bereits HTML-escaped (alt passt gefahrlos in alt="…", caption_html in
- * Elementinhalte). caption bleibt roh und muss im Template mit
- * {{ caption | entities }} ausgegeben werden.
+ * aber aus fremden Social-Media-Konten. caption, alt und caption_html sind
+ * deshalb bereits HTML-escaped (sicher in Attributen und Elementinhalten,
+ * caption_html zusätzlich mit <br> für Zeilenumbrüche). Nur caption_raw ist
+ * der Rohtext und muss im Template selbst escaped werden.
  */
 class FeedItemPresenter
 {
@@ -36,6 +37,8 @@ class FeedItemPresenter
 
         $item['alt'] = self::escape($alt);
         $item['caption_html'] = self::captionHtml($caption);
+        $item['caption_raw'] = $caption;
+        $item['caption'] = $caption === null ? null : self::escape($caption);
         $item['is_video'] = ($item['media_type'] ?? null) === 'VIDEO' || filled($item['thumbnail_url'] ?? null);
         $item['date'] = $this->date($item['timestamp'] ?? null);
         $item['account'] = $account;

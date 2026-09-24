@@ -21,11 +21,11 @@ class ConnectionCodeTest extends TestCase
         config(['social-hub.url' => null, 'social-hub.key' => null, 'social-hub.webhook_secret' => null]);
 
         Http::fake([
-            'hub.test/api/v1/ping' => Http::response(['ok' => true, 'hub' => ['name' => 'Social Hub'], 'site' => ['id' => 1, 'name' => 'Rath Bau']]),
+            'hub.test/api/v1/ping' => Http::response(['ok' => true, 'hub' => ['name' => 'Social Hub'], 'site' => ['id' => 1, 'name' => 'Muster Bau']]),
             'hub.test/api/v1/accounts' => Http::response(['data' => [
-                ['handle' => 'rath_bau', 'platform' => 'instagram', 'username' => 'rath_bau', 'status' => 'active', 'can_publish' => false],
+                ['handle' => 'muster_bau', 'platform' => 'instagram', 'username' => 'muster_bau', 'status' => 'active', 'can_publish' => false],
             ]]),
-            'hub.test/api/v1/feeds/rath_bau*' => Http::response($this->hubFeed([$this->hubMedia('1')])),
+            'hub.test/api/v1/feeds/muster_bau*' => Http::response($this->hubFeed([$this->hubMedia('1')])),
             'hub.test/storage/*' => fn () => Http::response('bytes'),
         ]);
     }
@@ -37,7 +37,7 @@ class ConnectionCodeTest extends TestCase
             ->post(cp_route('social-hub.connect'), ['code' => $this->code(['u' => 'https://hub.test/', 'k' => 'site-key', 's' => 'webhook-secret'])])
             ->assertRedirect(cp_route('social-hub.index'))
             ->assertSessionHas('social_hub_ok', true)
-            ->assertSessionHas('social_hub_message', fn (string $message): bool => str_contains($message, 'verbunden als „Rath Bau“'));
+            ->assertSessionHas('social_hub_message', fn (string $message): bool => str_contains($message, 'verbunden als „Muster Bau“'));
 
         Http::assertSent(fn (Request $request): bool => $request->url() === 'https://hub.test/api/v1/ping'
             && $request->hasHeader('Authorization', 'Bearer site-key'));
@@ -46,7 +46,7 @@ class ConnectionCodeTest extends TestCase
         $this->assertSame('https://hub.test', $connection->url());
         $this->assertSame('site-key', $connection->key());
         $this->assertSame('webhook-secret', $connection->webhookSecret());
-        $this->assertCount(1, app(StateStore::class)->feed('rath_bau')['data']);
+        $this->assertCount(1, app(StateStore::class)->feed('muster_bau')['data']);
     }
 
     #[Test]
