@@ -154,6 +154,25 @@ class FeedRepository
     }
 
     /**
+     * Neu laden nach einem Webhook "feed.updated", ohne Exception. Bis der neue
+     * Feed steht, bleibt der alte im Cache. Scheitert es, wird der Cache
+     * verworfen, damit der nächste Seitenaufruf es selbst versucht.
+     */
+    public function refreshAfterChange(string $handle): void
+    {
+        if (! $this->client->isConfigured()) {
+            return;
+        }
+
+        try {
+            $this->refresh($handle, microtime(true) + (float) config('social-hub.webhook_refresh_seconds', 60));
+        } catch (Throwable $exception) {
+            $this->status->recordError("Feed {$handle}", $this->describe($exception));
+            $this->forget($handle);
+        }
+    }
+
+    /**
      * Letzter guter Feed, solange er nicht älter als stale_days ist.
      *
      * @return array{handle: string, data: list<array<string, mixed>>, meta: array<string, mixed>, fetched_at: string|null, stale: bool}|null

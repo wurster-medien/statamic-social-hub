@@ -2,10 +2,13 @@
 
 namespace WursterMedien\SocialHub\Tests\Feature;
 
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\Test;
 use Statamic\Facades\Collection;
 use Statamic\Facades\Entry;
+use WursterMedien\SocialHub\Feeds\FeedRepository;
 use WursterMedien\SocialHub\Tests\TestCase;
 use WursterMedien\SocialHub\Webhooks\SignatureVerifier;
 
@@ -173,6 +176,41 @@ class WebhookTest extends TestCase
     public function unknown_events_are_rejected(): void
     {
         $this->sendWebhook(['event' => 'account.deleted', 'post' => ['id' => 'x']])->assertStatus(422);
+    }
+
+    #[Test]
+    public function a_feed_update_reloads_the_feed_after_the_response(): void
+    {
+        $feeds = app(FeedRepository::class);
+        Cache::put($feeds->cacheKey('rath_bau'), ['handle' => 'rath_bau', 'data' => [$this->hubMedia('alt')], 'meta' => [], 'fetched_at' => null, 'stale' => false]);
+        Http::fake([
+            'hub.test/api/v1/feeds/rath_bau*' => Http::response($this->hubFeed([$this->hubMedia('neu')])),
+            'hub.test/storage/*' => Http::response('jpeg-bytes', 200, ['Content-Type' => 'image/jpeg']),
+        ]);
+
+        $this->sendWebhook(['event' => 'feed.updated', 'account' => 'rath_bau', 'changed_at' => '2026-09-24T12:00:00+00:00'])
+            ->assertOk()->assertExactJson(['ok' => true, 'account' => 'rath_bau']);
+
+        $this->assertSame(['neu'], array_column($feeds->items('rath_bau'), 'id'));
+        $this->assertSame('/social-hub/rath_bau/neu.jpg', $feeds->items('rath_bau')[0]['media_url']);
+    }
+
+    #[Test]
+    public function a_failed_reload_drops_the_cached_feed(): void
+    {
+        $feeds = app(FeedRepository::class);
+        Cache::put($feeds->cacheKey('rath_bau'), ['handle' => 'rath_bau', 'data' => [$this->hubMedia('alt')], 'meta' => [], 'fetched_at' => null, 'stale' => false]);
+        Http::fake(['hub.test/*' => Http::response(['message' => 'Server Error'], 500)]);
+
+        $this->sendWebhook(['event' => 'feed.updated', 'account' => 'rath_bau'])->assertOk();
+
+        $this->assertNull(Cache::get($feeds->cacheKey('rath_bau')));
+    }
+
+    #[Test]
+    public function a_feed_update_without_account_is_rejected(): void
+    {
+        $this->sendWebhook(['event' => 'feed.updated'])->assertStatus(422);
     }
 
     /**

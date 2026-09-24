@@ -37,6 +37,12 @@ return [
     |--------------------------------------------------------------------------
     |
     | cache_minutes: so lange wird ein Feed aus dem Laravel-Cache geliefert.
+    |                Ändert sich ein Feed, meldet der Hub das per Webhook
+    |                (feed.updated) und der Feed wird sofort neu geladen. Die
+    |                Cache-Zeit ist nur der Rückfall, falls der Webhook die
+    |                Seite nicht erreicht, und gilt für Like-Zahlen.
+    | webhook_refresh_seconds: Zeitbudget für das Spiegeln der Medien nach
+    |                einem Webhook (läuft nach der Antwort an den Hub).
     | stale_days:    so lange wird der letzte gute Feed ausgeliefert, wenn der
     |                Hub nicht erreichbar ist. Danach bleibt der Feed leer.
     | retry_minutes: nach einem Fehler wird der Hub frühestens nach dieser
@@ -45,6 +51,8 @@ return [
     */
 
     'cache_minutes' => 30,
+
+    'webhook_refresh_seconds' => 60,
 
     'stale_days' => 7,
 

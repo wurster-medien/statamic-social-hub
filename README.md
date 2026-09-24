@@ -46,6 +46,8 @@ SOCIAL_HUB_POST_TIMEOUT=120         # optional: Sekunden für „An Social Hub s
 
 Der Scheduler braucht den üblichen Cron (`* * * * * php artisan schedule:run`). Ohne Cron lädt die Seite den Feed beim ersten Aufruf nach Ablauf des Caches (mit Zeitbudget für Medien).
 
+**Aktualität:** Der Hub prüft die Konten jede Minute auf neue, gelöschte oder bearbeitete Beiträge. Ändert sich ein Feed, schickt er den Webhook `feed.updated` an `POST /!/social-hub/webhook`. Das Addon antwortet sofort und lädt den Feed danach neu, samt Spiegeln der Medien (auch Videos). Neue Beiträge sind so nach ein bis zwei Minuten auf der Seite. Dafür muss das Webhook-Secret gesetzt sein (kommt mit dem Verbindungscode). Die Cache-Zeit (`cache_minutes`, 30 Minuten) bleibt der Rückfall, falls der Webhook die Seite nicht erreicht, und gilt für Like-Zahlen. Nutzt die Seite Statamics Static Caching, bleiben ganze Seiten bis zur Invalidierung im Cache; den Feed dort per `nocache` einbinden.
+
 ## Tags
 
 ```antlers
