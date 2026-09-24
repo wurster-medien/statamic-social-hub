@@ -134,7 +134,8 @@ class ConnectionCodeTest extends TestCase
             ->get(cp_route('social-hub.index'))
             ->assertOk()
             ->assertSee('nicht verbunden')
-            ->assertSee('Verbindungscode einfügen')
+            ->assertSee('label="Verbindungscode"', false)
+            ->assertSee('name="code"', false)
             ->assertDontSee('Verbindung trennen');
     }
 
