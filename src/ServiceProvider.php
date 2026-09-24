@@ -13,6 +13,7 @@ use WursterMedien\SocialHub\Dictionaries\SocialHubAccounts;
 use WursterMedien\SocialHub\Feeds\FeedRepository;
 use WursterMedien\SocialHub\Feeds\MediaMirror;
 use WursterMedien\SocialHub\Hub\HubClient;
+use WursterMedien\SocialHub\Support\HubConnection;
 use WursterMedien\SocialHub\Support\StateStore;
 use WursterMedien\SocialHub\Support\SyncStatus;
 use WursterMedien\SocialHub\Tags\Social;
@@ -48,6 +49,7 @@ class ServiceProvider extends AddonServiceProvider
     {
         parent::register();
 
+        $this->app->singleton(HubConnection::class);
         $this->app->singleton(HubClient::class);
         $this->app->singleton(StateStore::class);
         $this->app->singleton(SyncStatus::class);
@@ -68,7 +70,7 @@ class ServiceProvider extends AddonServiceProvider
         $schedule->command('social-hub:sync')
             ->everyThirtyMinutes()
             ->withoutOverlapping(30)
-            ->when(fn () => (bool) config('social-hub.schedule', true) && filled(config('social-hub.url')));
+            ->when(fn () => (bool) config('social-hub.schedule', true) && app(HubConnection::class)->isConfigured());
     }
 
     /**
@@ -92,7 +94,12 @@ class ServiceProvider extends AddonServiceProvider
                         ->children([
                             Permission::make('manage social hub')
                                 ->label('Social Hub verwalten')
-                                ->description('Synchronisieren und Einträge an den Social Hub senden'),
+                                ->description('Synchronisieren und Einträge an den Social Hub senden')
+                                ->children([
+                                    Permission::make('connect social hub')
+                                        ->label('Mit dem Social Hub verbinden')
+                                        ->description('Verbindungscode einfügen oder die Verbindung trennen'),
+                                ]),
                         ]);
                 });
             });

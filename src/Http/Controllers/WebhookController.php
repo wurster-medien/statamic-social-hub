@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Log;
 use WursterMedien\SocialHub\Posts\PostStatusWriter;
+use WursterMedien\SocialHub\Support\HubConnection;
 use WursterMedien\SocialHub\Webhooks\SignatureVerifier;
 
 /**
@@ -22,10 +23,10 @@ class WebhookController extends Controller
 {
     public const EVENTS = ['post.updated', 'post.published', 'post.failed'];
 
-    public function __invoke(Request $request, SignatureVerifier $verifier, PostStatusWriter $writer): JsonResponse
+    public function __invoke(Request $request, SignatureVerifier $verifier, PostStatusWriter $writer, HubConnection $connection): JsonResponse
     {
         $payload = $request->getContent();
-        $signature = $verifier->validSignature($payload, $request->header(SignatureVerifier::HEADER), config('social-hub.webhook_secret'));
+        $signature = $verifier->validSignature($payload, $request->header(SignatureVerifier::HEADER), $connection->webhookSecret());
 
         if ($signature === null) {
             Log::warning('[Social Hub] Webhook mit ungültiger oder abgelaufener Signatur abgelehnt.');

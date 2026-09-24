@@ -10,19 +10,21 @@ use Throwable;
 use WursterMedien\SocialHub\Accounts\AccountRepository;
 use WursterMedien\SocialHub\Hub\HubClient;
 use WursterMedien\SocialHub\Hub\HubException;
+use WursterMedien\SocialHub\Support\HubConnection;
+use WursterMedien\SocialHub\Support\InvalidConnectionCode;
 use WursterMedien\SocialHub\Support\StateStore;
 use WursterMedien\SocialHub\Support\SyncStatus;
 use WursterMedien\SocialHub\Sync\Synchronizer;
 
 /**
- * Control-Panel-Seite "Social Hub": Verbindung, Konten, Fehler, Sync-Knopf.
+ * Control-Panel-Seite "Social Hub": Verbindung (Verbindungscode einfügen), Konten, Fehler, Sync-Knopf.
  *
  * Bewusst eine Blade-Seite mit @extends('statamic::layout'): Das läuft in
  * Statamic 5 (Vue 2) und Statamic 6 (Inertia, dort als NonInertiaPage).
  */
 class SocialHubController extends CpController
 {
-    public function index(HubClient $client, AccountRepository $accounts, StateStore $store, SyncStatus $status): View
+    public function index(HubClient $client, AccountRepository $accounts, StateStore $store, SyncStatus $status, HubConnection $connection): View
     {
         $this->authorize('view social hub');
 
@@ -69,7 +71,7 @@ class SocialHubController extends CpController
         return view('social-hub::cp.index', [
             'title' => 'Social Hub',
             'configured' => $configured,
-            'hubUrl' => config('social-hub.url'),
+            'hubUrl' => $connection->url(),
             'ping' => $ping,
             'pingError' => $pingError,
             'accounts' => $rows,
@@ -84,8 +86,59 @@ class SocialHubController extends CpController
             'scheduled' => (bool) config('social-hub.schedule', true),
             'canManage' => auth()->user()?->can('manage social hub') ?? false,
             'webhookUrl' => url(config('statamic.routes.action', '!').'/social-hub/webhook'),
-            'webhookConfigured' => filled(config('social-hub.webhook_secret')),
+            'webhookConfigured' => filled($connection->webhookSecret()),
+            'canConnect' => auth()->user()?->can('connect social hub') ?? false,
+            'usesEnvironment' => $connection->usesEnvironment(),
+            'hasStoredCode' => $connection->hasStoredCode(),
         ]);
+    }
+
+    /**
+     * Verbindungscode aus dem Hub einfügen: erst mit einem Ping prüfen, dann verschlüsselt speichern und
+     * gleich synchronisieren, damit der Feed sofort da ist.
+     */
+    public function connect(HubConnection $connection, HubClient $client, Synchronizer $synchronizer): RedirectResponse
+    {
+        $this->authorize('connect social hub');
+
+        if ($connection->usesEnvironment()) {
+            return $this->backWithMessage('Die Zugangsdaten stehen in der .env der Seite und haben Vorrang. Bitte Wurster Medien kontaktieren.', false);
+        }
+
+        try {
+            $credentials = $connection->parse((string) request()->input('code'));
+        } catch (InvalidConnectionCode $exception) {
+            return $this->backWithMessage($exception->getMessage(), false);
+        }
+
+        try {
+            $ping = $client->withCredentials($credentials['url'], $credentials['key'])->ping();
+        } catch (HubException $exception) {
+            return $this->backWithMessage('Der Hub hat den Verbindungscode nicht angenommen: '.$exception->getMessage(), false);
+        }
+
+        $connection->store($credentials);
+
+        $site = is_string($ping['site']['name'] ?? null) ? ' als „'.$ping['site']['name'].'“' : '';
+
+        try {
+            $result = $synchronizer->run([], microtime(true) + 25);
+            $synced = ' '.$result->summary();
+        } catch (Throwable $exception) {
+            report($exception);
+            $synced = ' Der erste Abruf ist fehlgeschlagen, bitte „Jetzt synchronisieren“ versuchen.';
+        }
+
+        return $this->backWithMessage('Mit dem Social Hub verbunden'.$site.'.'.$synced, true);
+    }
+
+    public function disconnect(HubConnection $connection): RedirectResponse
+    {
+        $this->authorize('connect social hub');
+
+        $connection->forget();
+
+        return $this->backWithMessage('Verbindung getrennt. Die Seite zeigt weiter die zuletzt geladenen Beiträge.', true);
     }
 
     public function sync(Synchronizer $synchronizer, SyncStatus $status): RedirectResponse
@@ -109,6 +162,13 @@ class SocialHubController extends CpController
             $ok = false;
         }
 
+        return redirect()->to(cp_route('social-hub.index'))
+            ->with('social_hub_message', $message)
+            ->with('social_hub_ok', $ok);
+    }
+
+    protected function backWithMessage(string $message, bool $ok): RedirectResponse
+    {
         return redirect()->to(cp_route('social-hub.index'))
             ->with('social_hub_message', $message)
             ->with('social_hub_ok', $ok);

@@ -9,16 +9,33 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Statamic\Statamic;
 use Throwable;
+use WursterMedien\SocialHub\Support\HubConnection;
 
 /**
  * Einziger Ort mit HTTP-Aufrufen an die API v1 des Social Hubs.
  *
- * Authentifizierung per Bearer-Key der Seite. Zusätzlich werden die Versionen
- * von Addon und Statamic mitgeschickt, damit der Hub veraltete Seiten erkennt.
+ * Authentifizierung per Bearer-Key der Seite (Zugangsdaten aus HubConnection). Zusätzlich
+ * werden die Versionen von Addon und Statamic mitgeschickt, damit der Hub veraltete Seiten erkennt.
  */
 class HubClient
 {
     public const PACKAGE = 'wurster-medien/statamic-social-hub';
+
+    /** @var array{url: string, key: string}|null */
+    protected ?array $credentials = null;
+
+    public function __construct(protected HubConnection $connection) {}
+
+    /**
+     * Eine Kopie mit anderen Zugangsdaten, z. B. um einen eingefügten Verbindungscode vor dem Speichern zu prüfen.
+     */
+    public function withCredentials(string $url, string $key): static
+    {
+        $client = clone $this;
+        $client->credentials = ['url' => $url, 'key' => $key];
+
+        return $client;
+    }
 
     /**
      * @return array{ok?: bool, hub?: array<string, mixed>, site?: array<string, mixed>}
@@ -94,7 +111,7 @@ class HubClient
 
     public function isConfigured(): bool
     {
-        return filled(config('social-hub.url')) && filled(config('social-hub.key'));
+        return $this->credentials !== null || $this->connection->isConfigured();
     }
 
     public function addonVersion(): string
@@ -164,11 +181,11 @@ class HubClient
             throw HubNotConfiguredException::missing();
         }
 
-        return Http::baseUrl(rtrim((string) config('social-hub.url'), '/'))
+        return Http::baseUrl(rtrim((string) ($this->credentials['url'] ?? $this->connection->url()), '/'))
             ->timeout($timeout ?? (int) config('social-hub.timeout', 5))
             ->connectTimeout(min(3, (int) config('social-hub.timeout', 5)))
             ->acceptJson()
-            ->withToken((string) config('social-hub.key'))
+            ->withToken((string) ($this->credentials['key'] ?? $this->connection->key()))
             ->withHeaders([
                 'X-Social-Hub-Addon' => $this->addonVersion(),
                 'X-Statamic-Version' => $this->statamicVersion(),

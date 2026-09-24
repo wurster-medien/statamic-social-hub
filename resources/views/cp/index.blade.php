@@ -10,6 +10,7 @@
     $bad = 'display:inline-block;padding:1px 8px;border-radius:9px;font-size:12px;background:#fee2e2;color:#991b1b;';
     $neutral = 'display:inline-block;padding:1px 8px;border-radius:9px;font-size:12px;background:#f3f4f6;color:#374151;';
     $button = 'display:inline-block;padding:7px 14px;border-radius:6px;border:0;background:#2563eb;color:#fff;font-size:14px;cursor:pointer;';
+    $input = 'width:100%;padding:8px 10px;border:1px solid rgba(0,0,0,.2);border-radius:6px;font-family:monospace;font-size:13px;box-sizing:border-box;';
     $buttonSecondary = 'display:inline-block;padding:5px 10px;border-radius:6px;border:1px solid rgba(0,0,0,.15);background:#fff;color:#374151;font-size:13px;cursor:pointer;';
 @endphp
 
@@ -37,9 +38,9 @@
         <h2 style="font-size:16px;font-weight:600;margin:0 0 12px;">Verbindung</h2>
 
         @if (! $configured)
-            <p style="margin:0;">
-                <span style="{{ $bad }}">nicht konfiguriert</span>
-                Bitte <code>SOCIAL_HUB_URL</code> und <code>SOCIAL_HUB_KEY</code> in der <code>.env</code> setzen.
+            <p style="margin:0 0 12px;">
+                <span style="{{ $bad }}">nicht verbunden</span>
+                Den Verbindungscode erhalten Sie von Wurster Medien.
             </p>
         @else
             <table style="width:100%;border-collapse:collapse;">
@@ -104,7 +105,7 @@
                         @if ($webhookConfigured)
                             <span style="{{ $ok }}">Secret gesetzt</span>
                         @else
-                            <span style="{{ $neutral }}">SOCIAL_HUB_WEBHOOK_SECRET fehlt</span>
+                            <span style="{{ $neutral }}">kein Secret (nur für Posten nötig)</span>
                         @endif
                     </td>
                 </tr>
@@ -112,7 +113,34 @@
                     <td style="{{ $td }}">Addon-Version</td>
                     <td style="{{ $td }}">{{ $addonVersion }}</td>
                 </tr>
+                <tr>
+                    <td style="{{ $td }}">Zugangsdaten</td>
+                    <td style="{{ $td }}">{{ $usesEnvironment ? 'aus der .env der Seite' : 'aus dem Verbindungscode' }}</td>
+                </tr>
             </table>
+        @endif
+
+        @if ($canConnect && ! $usesEnvironment)
+            <form method="POST" action="{{ cp_route('social-hub.connect') }}" style="margin:16px 0 0;">
+                @csrf
+                <label for="social-hub-code" style="display:block;font-weight:600;font-size:14px;margin-bottom:6px;">
+                    {{ $configured ? 'Neuen Verbindungscode einfügen' : 'Verbindungscode einfügen' }}
+                </label>
+                <textarea id="social-hub-code" name="code" rows="3" required autocomplete="off" spellcheck="false" placeholder="shc1.…" style="{{ $input }}"></textarea>
+                <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+                    <button type="submit" style="{{ $button }}">Verbinden</button>
+                    <span style="font-size:13px;color:#6b7280;">Der Code wird geprüft, verschlüsselt gespeichert, danach werden die Beiträge geladen.</span>
+                </div>
+            </form>
+
+            @if ($hasStoredCode)
+                <form method="POST" action="{{ cp_route('social-hub.disconnect') }}" style="margin:12px 0 0;" onsubmit="return confirm('Verbindung zum Social Hub trennen? Die Seite zeigt dann nur noch die zuletzt geladenen Beiträge.');">
+                    @csrf
+                    <button type="submit" style="{{ $buttonSecondary }}">Verbindung trennen</button>
+                </form>
+            @endif
+        @elseif (! $configured)
+            <p style="margin:0;color:#6b7280;">Zum Verbinden ist das Recht „Mit dem Social Hub verbinden“ nötig.</p>
         @endif
     </div>
 

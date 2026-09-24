@@ -27,7 +27,13 @@ Config veröffentlichen (optional):
 php artisan vendor:publish --tag=social-hub-config
 ```
 
-### .env
+### Verbinden (ohne .env)
+
+Im Hub bei der Kundenseite „API-Key erzeugen“ klicken. Der Hub zeigt einmal einen **Verbindungscode** (`shc1.…`). Ihn im Control Panel unter **Tools → Social Hub** einfügen und auf „Verbinden“ klicken. Das Addon prüft den Code per Ping, speichert Hub-Adresse, Key und Webhook-Secret verschlüsselt (`APP_KEY`) in `storage/app/social-hub/connection.json` und lädt gleich die Beiträge. Nötig ist das Recht „Mit dem Social Hub verbinden“ (`connect social hub`).
+
+Stehen `SOCIAL_HUB_URL`/`SOCIAL_HUB_KEY` in der `.env`, haben sie Vorrang, und das Feld wird nicht angezeigt. Ein Code ohne Key (nach „Webhook-Secret erzeugen“ im Hub) behält den gespeicherten Key und ersetzt nur das Secret.
+
+### .env (Alternative)
 
 ```dotenv
 SOCIAL_HUB_URL=https://hub.wurster-medien.de
@@ -111,8 +117,8 @@ php please social-hub:sync --account=rath_bau # nur ein Konto (ohne Aufräumen)
 
 ## Control Panel
 
-**Tools → Social Hub**: Verbindung (Ping), Konten mit Status und letztem Abruf (Hub und lokal), letzte Fehler, Knopf „Jetzt synchronisieren“.
-Berechtigungen: „Social Hub ansehen“ (`view social hub`) und „Social Hub verwalten“ (`manage social hub`, nötig für Sync und Senden).
+**Tools → Social Hub**: Verbindung (Ping, Verbindungscode einfügen, Verbindung trennen), Konten mit Status und letztem Abruf (Hub und lokal), letzte Fehler, Knopf „Jetzt synchronisieren“.
+Berechtigungen: „Social Hub ansehen“ (`view social hub`), „Social Hub verwalten“ (`manage social hub`, nötig für Sync und Senden) und „Mit dem Social Hub verbinden“ (`connect social hub`).
 
 ## Posten aus Statamic (Phase 2)
 
@@ -155,7 +161,11 @@ vendor/bin/phpunit
 
 ## Änderungen
 
-### Unveröffentlicht (Sicherheitsprüfung)
+### Unveröffentlicht
+
+- **Verbindungscode:** Die Seite lässt sich im Control Panel mit einem Code aus dem Hub verbinden, ohne die `.env` zu bearbeiten. Die Zugangsdaten liegen verschlüsselt unter `storage/app/social-hub/connection.json`; Werte aus der `.env` haben Vorrang. Neues Recht `connect social hub`.
+
+### Sicherheitsprüfung
 
 - **Templates:** `alt` ist jetzt HTML-escaped (sicher in `alt="…"`), neues Feld `caption_html` (escaped, Zeilenumbrüche als `<br>`). `caption` bleibt roh – in Templates `{{ caption | entities }}` verwenden.
 - **Medien:** Downloads per Stream in eine temporäre Datei mit Größenprüfung vor und während des Downloads (kein Speicherüberlauf mehr bei großen Videos). Beim Seitenaufruf werden keine Videos mehr gespiegelt.

@@ -6,4 +6,6 @@ use WursterMedien\SocialHub\Http\Controllers\CP\SocialHubController;
 Route::prefix('social-hub')->name('social-hub.')->group(function () {
     Route::get('/', [SocialHubController::class, 'index'])->name('index');
     Route::post('sync', [SocialHubController::class, 'sync'])->name('sync');
+    Route::post('connect', [SocialHubController::class, 'connect'])->name('connect');
+    Route::post('disconnect', [SocialHubController::class, 'disconnect'])->name('disconnect');
 });
