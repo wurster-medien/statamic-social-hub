@@ -19,8 +19,8 @@ use WursterMedien\SocialHub\Sync\Synchronizer;
 /**
  * Control-Panel-Seite "Social Hub": Verbindung (Verbindungscode einfügen), Konten, Fehler, Sync-Knopf.
  *
- * Bewusst eine Blade-Seite mit @extends('statamic::layout'): Das läuft in
- * Statamic 5 (Vue 2) und Statamic 6 (Inertia, dort als NonInertiaPage).
+ * Bewusst eine Blade-Seite mit @extends('statamic::layout'), in Statamic 6 als
+ * NonInertiaPage. Die View nutzt die <ui-…>-Komponenten des Control Panels.
  */
 class SocialHubController extends CpController
 {

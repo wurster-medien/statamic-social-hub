@@ -1,6 +1,6 @@
 # Social Hub für Statamic
 
-Statamic-Addon (Statamic 5 und 6, PHP 8.2+) für den Social Hub von Wurster Medien.
+Statamic-Addon (Statamic 6, PHP 8.3+) für den Social Hub von Wurster Medien.
 
 - liefert Instagram- und Facebook-Feeds aus dem Hub an Antlers-Templates,
 - spiegelt die Bilder und Videos lokal nach `public/social-hub/…` (Glide-tauglich, kein Meta-CDN im Browser),
