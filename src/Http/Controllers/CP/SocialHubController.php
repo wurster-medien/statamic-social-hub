@@ -12,6 +12,7 @@ use WursterMedien\SocialHub\Hub\HubClient;
 use WursterMedien\SocialHub\Hub\HubException;
 use WursterMedien\SocialHub\Support\HubConnection;
 use WursterMedien\SocialHub\Support\InvalidConnectionCode;
+use WursterMedien\SocialHub\Support\StatamicVersion;
 use WursterMedien\SocialHub\Support\StateStore;
 use WursterMedien\SocialHub\Support\SyncStatus;
 use WursterMedien\SocialHub\Sync\Synchronizer;
@@ -19,12 +20,12 @@ use WursterMedien\SocialHub\Sync\Synchronizer;
 /**
  * Control-Panel-Seite "Social Hub": Verbindung (Verbindungscode einfügen), Konten, Fehler, Sync-Knopf.
  *
- * Bewusst eine Blade-Seite mit @extends('statamic::layout'), in Statamic 6 als
- * NonInertiaPage. Die View nutzt die <ui-…>-Komponenten des Control Panels.
+ * Bewusst eine Blade-Seite mit @extends('statamic::layout'), in Statamic 6 als NonInertiaPage. Je nach
+ * Statamic-Version eine eigene View: cp/v6 nutzt die <ui-…>-Komponenten, cp/v5 die CSS-Klassen von Statamic 5.
  */
 class SocialHubController extends CpController
 {
-    public function index(HubClient $client, AccountRepository $accounts, StateStore $store, SyncStatus $status, HubConnection $connection): View
+    public function index(HubClient $client, AccountRepository $accounts, StateStore $store, SyncStatus $status, HubConnection $connection, StatamicVersion $statamic): View
     {
         $this->authorize('view social hub');
 
@@ -68,7 +69,7 @@ class SocialHubController extends CpController
             ];
         }, $accountList);
 
-        return view('social-hub::cp.index', [
+        return view($statamic->controlPanelView(), [
             'title' => 'Social Hub',
             'configured' => $configured,
             'hubUrl' => $connection->url(),

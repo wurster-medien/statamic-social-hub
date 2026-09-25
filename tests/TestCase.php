@@ -8,6 +8,7 @@ use Statamic\Testing\AddonTestCase;
 use Statamic\Testing\Concerns\PreventsSavingStacheItemsToDisk;
 use WursterMedien\SocialHub\Feeds\MediaMirror;
 use WursterMedien\SocialHub\ServiceProvider;
+use WursterMedien\SocialHub\Support\StatamicVersion;
 
 abstract class TestCase extends AddonTestCase
 {
@@ -57,6 +58,22 @@ abstract class TestCase extends AddonTestCase
             'root' => self::tmpPath('assets'),
             'url' => '/assets',
         ]);
+    }
+
+    /**
+     * Die CP-View einer bestimmten Statamic-Version rendern, unabhängig von der installierten.
+     */
+    protected function useStatamicVersion(int $major): void
+    {
+        $this->app->instance(StatamicVersion::class, new class($major) extends StatamicVersion
+        {
+            public function __construct(private int $fakeMajor) {}
+
+            public function major(): int
+            {
+                return $this->fakeMajor;
+            }
+        });
     }
 
     public static function tmpPath(string $path = ''): string

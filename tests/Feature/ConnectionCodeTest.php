@@ -130,12 +130,28 @@ class ConnectionCodeTest extends TestCase
     #[Test]
     public function the_page_offers_the_code_field_while_not_connected(): void
     {
+        $this->useStatamicVersion(6);
+
         $this->actingAs($this->superUser())
             ->get(cp_route('social-hub.index'))
             ->assertOk()
             ->assertSee('nicht verbunden')
             ->assertSee('label="Verbindungscode"', false)
             ->assertSee('name="code"', false)
+            ->assertDontSee('Verbindung trennen');
+    }
+
+    #[Test]
+    public function the_statamic_5_page_offers_the_code_field_while_not_connected(): void
+    {
+        $this->useStatamicVersion(5);
+
+        $this->actingAs($this->superUser())
+            ->get(cp_route('social-hub.index'))
+            ->assertOk()
+            ->assertSee('nicht verbunden')
+            ->assertSee('name="code"', false)
+            ->assertDontSee('<ui-', false)
             ->assertDontSee('Verbindung trennen');
     }
 

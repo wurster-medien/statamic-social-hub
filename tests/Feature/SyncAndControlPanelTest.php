@@ -70,6 +70,8 @@ class SyncAndControlPanelTest extends TestCase
     #[Test]
     public function the_control_panel_page_shows_status_and_accounts(): void
     {
+        $this->useStatamicVersion(6);
+
         $this->actingAs($this->superUser())
             ->get(cp_route('social-hub.index'))
             ->assertOk()
@@ -77,6 +79,22 @@ class SyncAndControlPanelTest extends TestCase
             ->assertSee('verbunden')
             ->assertSee('muster_bau')
             ->assertSee('Jetzt synchronisieren')
+            ->assertDontSee('test-site-key');
+    }
+
+    #[Test]
+    public function statamic_5_gets_a_page_without_statamic_6_components(): void
+    {
+        $this->useStatamicVersion(5);
+
+        $this->actingAs($this->superUser())
+            ->get(cp_route('social-hub.index'))
+            ->assertOk()
+            ->assertSee('verbunden')
+            ->assertSee('muster_bau')
+            ->assertSee('Jetzt synchronisieren')
+            ->assertSee('class="data-table"', false)
+            ->assertDontSee('<ui-', false)
             ->assertDontSee('test-site-key');
     }
 
