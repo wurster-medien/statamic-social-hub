@@ -52,6 +52,33 @@ class MediaMirrorTest extends TestCase
     }
 
     #[Test]
+    public function the_media_folder_gets_a_gitignore_so_mirrored_files_are_not_committed(): void
+    {
+        Http::fake(['hub.test/storage/*' => fn () => Http::response('bytes')]);
+        $disk = Storage::disk(MediaMirror::DISK);
+
+        app(MediaMirror::class)->mirrorFeed('muster_bau', [
+            $this->hubMedia('1', ['media_url' => 'https://hub.test/storage/social/1.jpg']),
+        ]);
+
+        $this->assertSame(['*'], array_values(array_filter(
+            explode("\n", $disk->get('.gitignore')),
+            fn (string $line): bool => $line !== '' && ! str_starts_with($line, '#'),
+        )));
+
+        $disk->put('.gitignore', 'eigene Regeln');
+
+        app(MediaMirror::class)->mirrorFeed('muster_bau', [
+            $this->hubMedia('2', ['media_url' => 'https://hub.test/storage/social/2.jpg']),
+        ]);
+
+        $this->assertSame('eigene Regeln', $disk->get('.gitignore'));
+        // Aufräumen lässt die .gitignore stehen.
+        $this->assertSame(2, app(MediaMirror::class)->prune([]));
+        $this->assertTrue($disk->exists('.gitignore'));
+    }
+
+    #[Test]
     public function a_local_image_narrower_than_the_hub_reports_is_downloaded_again(): void
     {
         Http::fake(['hub.test/storage/*' => fn () => Http::response($this->jpeg(36, 64))]);

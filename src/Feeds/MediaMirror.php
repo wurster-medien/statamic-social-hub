@@ -34,6 +34,9 @@ use WursterMedien\SocialHub\Support\StateStore;
  * Schutz fremder Dateien: Ist media_path leer, "/" oder enthält "..", wird
  * weder gespiegelt noch aufgeräumt. prune() löscht nur Dateien nach dem eigenen
  * Namensschema {handle}/{id}(_thumb).{ext}.
+ *
+ * Beim ersten Download legt es public/{media_path}/.gitignore an, damit die
+ * Medien nicht im Git-Repo der Seite landen.
  */
 class MediaMirror
 {
@@ -52,6 +55,8 @@ class MediaMirror
 
     protected const FOLDER_PATTERN = '#^[A-Za-z0-9_-][A-Za-z0-9._-]*$#';
 
+    protected const GITIGNORE = "# Vom Social Hub gespiegelte Medien. Werden automatisch geladen, nicht versionieren.\n*\n";
+
     /**
      * @var array{downloaded: int, existing: int, failed: int, skipped: int}
      */
@@ -63,6 +68,8 @@ class MediaMirror
     protected array $failures = [];
 
     protected bool $warnedAboutConfiguration = false;
+
+    protected bool $gitIgnoreChecked = false;
 
     public function __construct(protected HubConnection $connection) {}
 
@@ -494,6 +501,8 @@ class MediaMirror
 
     protected function store(string $temporary, string $path): void
     {
+        $this->ensureGitIgnore();
+
         $stream = fopen($temporary, 'rb');
 
         if ($stream === false) {
@@ -509,6 +518,26 @@ class MediaMirror
                 fclose($stream);
             }
         }
+    }
+
+    /**
+     * Legt im Medienordner eine .gitignore an, damit gespiegelte Medien nicht im Git-Repo der
+     * Seite landen (sie werden auf jedem Server neu geladen). Wirkt auch ohne Eintrag in der
+     * .gitignore des Projekts. Nur bei lokalen Disks, eine vorhandene Datei bleibt unverändert.
+     */
+    protected function ensureGitIgnore(): void
+    {
+        if ($this->gitIgnoreChecked) {
+            return;
+        }
+
+        $this->gitIgnoreChecked = true;
+
+        if (config('filesystems.disks.'.self::DISK.'.driver') !== 'local' || $this->disk()->exists('.gitignore')) {
+            return;
+        }
+
+        $this->disk()->put('.gitignore', self::GITIGNORE);
     }
 
     /**
