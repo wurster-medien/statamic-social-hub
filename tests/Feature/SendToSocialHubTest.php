@@ -81,7 +81,7 @@ class SendToSocialHubTest extends TestCase
     {
         $entry = $this->entry([
             'social_hub_targets' => [
-                ['enabled' => true, 'account' => 'muster_bau', 'type' => 'image', 'caption' => 'Nur für Instagram'],
+                ['enabled' => true, 'account' => 'muster_bau', 'type' => 'image', 'caption' => 'Nur für Instagram', 'first_comment' => '#holzbau'],
                 ['enabled' => false, 'account' => 'muster_bau_fb'],
                 ['enabled' => true, 'account' => ['muster_bau_fb2']],
             ],
@@ -100,7 +100,7 @@ class SendToSocialHubTest extends TestCase
         $this->assertSame('entry-1', $payload['source_reference']);
         $this->assertSame([['url' => $siteUrl.'/assets/richtfest.jpg', 'alt' => 'Richtfest auf der Baustelle']], $payload['media']);
         $this->assertSame([
-            ['account' => 'muster_bau', 'caption' => 'Nur für Instagram', 'type' => 'image'],
+            ['account' => 'muster_bau', 'caption' => 'Nur für Instagram', 'type' => 'image', 'first_comment' => '#holzbau'],
             ['account' => 'muster_bau_fb2'],
         ], $payload['targets']);
         $this->assertTrue($payload['submit']);

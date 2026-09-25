@@ -49,12 +49,20 @@ fields:
               link: Link
               text: 'Nur Text (nur Facebook)'
               reel: 'Reel / Video'
+              story: 'Story (erstes Bild bzw. Video, ohne Text)'
         -
           handle: caption
           field:
             type: textarea
             display: 'Eigener Text für diesen Kanal'
             placeholder: 'Leer lassen = gemeinsamer Text (bzw. Titel und Teaser)'
+        -
+          handle: first_comment
+          field:
+            type: textarea
+            display: 'Erster Kommentar'
+            instructions: 'Optional. Wird direkt nach dem Veröffentlichen als Kommentar unter den Beitrag gesetzt, z. B. für Hashtags. Nicht bei Stories.'
+            character_limit: 2200
   -
     handle: social_hub_text
     field:

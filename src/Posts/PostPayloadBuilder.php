@@ -21,7 +21,7 @@ class PostPayloadBuilder
     public const MAX_MEDIA = 10;
 
     /**
-     * @return array{title: string|null, body: string, link: string|null, scheduled_at: string|null, source_reference: string, media: list<array{url: string, alt: string|null}>, targets: list<array{account: string, caption?: string, type?: string}>, submit: bool}
+     * @return array{title: string|null, body: string, link: string|null, scheduled_at: string|null, source_reference: string, media: list<array{url: string, alt: string|null}>, targets: list<array{account: string, caption?: string, type?: string, first_comment?: string}>, submit: bool}
      *
      * @throws InvalidPostException
      */
@@ -55,7 +55,7 @@ class PostPayloadBuilder
     /**
      * Aktivierte Kanäle aus dem Grid social_hub_targets.
      *
-     * @return list<array{account: string, caption?: string, type?: string}>
+     * @return list<array{account: string, caption?: string, type?: string, first_comment?: string}>
      */
     public function targets(Entry $entry): array
     {
@@ -85,6 +85,10 @@ class PostPayloadBuilder
 
             if (filled($row['type'] ?? null)) {
                 $target['type'] = (string) $row['type'];
+            }
+
+            if (filled($firstComment = trim((string) ($row['first_comment'] ?? '')))) {
+                $target['first_comment'] = $firstComment;
             }
 
             $targets[$target['account']] = $target;
